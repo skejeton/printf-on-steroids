@@ -1,0 +1,63 @@
+#!/bin/sh
+#-*- sh -*-
+
+# some constants #
+
+OUTPUT_NAME=bin/superintf
+MUMBO_JUMBO=src/mumbojumbo.c
+
+##################
+
+# internal vars dont touch #
+ARGS=( $@ )
+NARG=0
+PROG_NAME=$0
+############################
+
+set -e
+
+# $1 offset
+getarg() {
+  echo ${ARGS[$NARG + $1]}
+}
+
+argv() {
+  R=${ARGS[@]:$NARG}
+  echo ${R[@]}
+}
+
+target_build() {
+  mkdir -p bin
+  cc $MUMBO_JUMBO -o $OUTPUT_NAME
+}
+
+target_run() {
+  target_build
+  $OUTPUT_NAME `argv`
+}
+
+hasargs=1
+
+# Fetch all sparse args
+while [ $hasargs -eq 1 ]
+do
+  case `getarg 0` in
+    *)
+      hasargs=0
+    ;;
+  esac
+done
+
+case `getarg 0` in
+  build)
+    target_build
+  ;;
+  run)
+    target_run
+  ;;
+  *)
+    echo "You can do: run, build"
+  ;;
+esac
+
+
