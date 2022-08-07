@@ -1,1 +1,6 @@
 bin
+*.exe
+*.ilk
+*.pdb
+*.obj
+*.o
