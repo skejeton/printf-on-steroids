@@ -1,1 +1,60 @@
-printf gay and cant do pictures and custom formats (based)
+
+-------------------------------------------------------------------------------
+Introduction
+-------------------------------------------------------------------------------
+
+This is an attempt at reinventing the concept of formatted print (printf). In
+C printf is a function that can print generic data into standard output file,
+either as generic way to output messages to the console or a way to inspect
+the behaviour of the program.
+
+Here we extend two notions:
+- The notion of "data", by adding the ability to display arrays, matrices,
+  bitmap images, and any kind of user-provided data.
+- The notion of "outputting", by not limiting ourselves to the console output
+  but also including graphical output and "control" output, and in general
+  any kind of user-provided output.
+
+The skeleton of this project is simply a library to parse formats and redirect
+vararg lists to user-provided callbacks. It wouldn't be very useful if there
+weren't some default format callbacks which can be used universally.
+
+This is why this library provides default callbacks:
+- For printing integer types, floating-point types and other standard C types
+- For printing arrays, tables, vectors, matrices
+- For printing raw RBGA/RGBA image data
+
+This allows you to inspect any data of your own application, or even library
+data. Multiple libraries can use this library and extend the functionality of
+display to include their own formats.
+
+-------------------------------------------------------------------------------
+Use case
+-------------------------------------------------------------------------------
+
+1. One of the major use-cases is introspection. Printf-debugging is a kind of
+meme, but the real issue with it is that it doesn't allow you full view of what
+the program does and that typically there's no correspondence between the code
+that is currently running and the data that's being printed, so it's hard to
+pinpoint which exact place in code produces the wrong data.
+
+Being able to quickly print sprites to verify that your bmp parsing is correct
+
+2. Programming your own applications that use the format parser. If for example
+you are programming a dialogue system, you can set up format callbacks that
+don't print any data, but instead set properties of the dialogue engine but
+otherwise display plain text.
+
+    // Initialization code
+    fmt_set_callback("emote", dialogue_set_emote);
+    fmt_set_callback("color", dialogue_set_color);
+
+    // Printing
+    fmt("Hello! {emote:smile}Welcome to {pause:0.3}{color:red}Black market")
+
+3. Simply having extendable printf. Sometimes useful.
+
+4. Using functionality of printf as a stub. If you program a simple ray tracer
+you might consider bitmap printing as a way to quickly get to the crux of ray
+tracer programming without having to manually open windows and getting the
+client area buffers.
