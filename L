@@ -2,10 +2,11 @@
 #-*- sh -*-
 
 # some constants #
-
-OUTPUT_NAME=bin/superintf
-MUMBO_JUMBO=src/mumbojumbo.c
-
+OUTPUT_NAME=bin/printf2
+SERVER_MAIN=src/ServerMain.c
+LIBRARIES="-lc -lm -lX11 bin/libenet.so.7 -Wl,-rpath,\$ORIGIN"
+FLAGS="-fsanitize=address -g"
+INCLUDES="-Ilib/enet/include"
 ##################
 
 # internal vars dont touch #
@@ -26,9 +27,16 @@ argv() {
   echo ${R[@]}
 }
 
+target_build_enet() {
+  make lib/enet
+  cp lib/enet/.libs/libenet.so.7 bin
+}
+
 target_build() {
   mkdir -p bin
-  cc $MUMBO_JUMBO -o $OUTPUT_NAME
+  target_build_enet
+  echo cc $SERVER_MAIN $FLAGS $LIBRARIES $INCLUDES -o $OUTPUT_NAME
+  cc $SERVER_MAIN $FLAGS $LIBRARIES $INCLUDES -o $OUTPUT_NAME
 }
 
 target_run() {
