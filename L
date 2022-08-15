@@ -28,7 +28,7 @@ argv() {
 }
 
 target_build_enet() {
-  make lib/enet
+  make ./lib/enet
   cp lib/enet/.libs/libenet.so.7 bin
 }
 
