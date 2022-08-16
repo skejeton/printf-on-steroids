@@ -1,6 +1,7 @@
 #ifndef H_COMMON
 #define H_COMMON
 
+#include <stdlib.h>
 #include <stdio.h>
 
 #ifndef DISABLE_LOGS
