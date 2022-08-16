@@ -3,10 +3,10 @@
 
 # some constants #
 OUTPUT_NAME=bin/printf2
-SERVER_MAIN=src/ServerMain.c
-LIBRARIES="-lc -lm -lX11 bin/libenet.so.7 -Wl,-rpath,\$ORIGIN"
+MAIN=src/ServerMain.c
+LIBRARIES="-lc -lm bin/libenet.a -Wl,-rpath,\$ORIGIN"
 FLAGS="-fsanitize=address -g"
-INCLUDES="-Ilib/enet/include"
+INCLUDES="-Ilib/enet/include -I."
 ##################
 
 # internal vars dont touch #
@@ -27,21 +27,21 @@ argv() {
   echo ${R[@]}
 }
 
-target_build_enet() {
-  make ./lib/enet
-  cp lib/enet/.libs/libenet.so.7 bin
+target_build_depend() {
+  make ./bin/libenet.a
+  make ./bin/libimgui.a
 }
 
 target_build() {
   mkdir -p bin
-  target_build_enet
-  echo cc $SERVER_MAIN $FLAGS $LIBRARIES $INCLUDES -o $OUTPUT_NAME
-  cc $SERVER_MAIN $FLAGS $LIBRARIES $INCLUDES -o $OUTPUT_NAME
+  target_build_depend
+  c++ server/Main.cpp bin/libimgui.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
+  cc client/Main.c $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
 }
 
 target_run() {
   target_build
-  $OUTPUT_NAME `argv`
+  bin/printf2_$1 `argv`
 }
 
 hasargs=1
@@ -61,7 +61,7 @@ case `getarg 0` in
     target_build
   ;;
   run)
-    target_run
+    target_run `getarg 1`
   ;;
   *)
     echo "You can do: run, build"
