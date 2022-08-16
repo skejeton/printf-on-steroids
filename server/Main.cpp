@@ -75,13 +75,10 @@ void StopServer(Server *server) {
 
 //////////////////////////////////////////
 
-#define SOKOL_IMPL
-#define SOKOL_GLCORE33
 #include "lib/sokol/sokol_app.h"
 #include "lib/sokol/sokol_gfx.h"
 #include "lib/sokol/sokol_glue.h"
 #include "lib/imgui/imgui.h"
-#define SOKOL_IMGUI_IMPL
 #include "lib/sokol/util/sokol_imgui.h"
 
 static sg_pass_action pass_action;

@@ -107,7 +107,7 @@ void P2_Printf(const char *fmt, ...) {
 int main() {
   P2_Init();
 
-#if 1
+#if 0
   P2_Printf("Oh and also, the logs preserve across runs.");
 #else
 
