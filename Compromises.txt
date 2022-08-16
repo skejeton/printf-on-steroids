@@ -1,0 +1,5 @@
+Currently there's no validation for data.
+The strings are assumed to be null terminated. 
+  If not, the server will crash.
+  Make the server resilient to crashing like that.
+  Sanitize incoming packets.

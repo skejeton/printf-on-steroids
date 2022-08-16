@@ -1,30 +1,53 @@
 #include "src/Common.h"
 #include <enet/enet.h>
 #include <signal.h>
+#include <string.h>
 
-struct {
-  ENetHost *host;
+char *CopyTextMalloc(const char *text) {
+  const size_t SIZE = strlen(text) + 1;
+  char *data = (char*)malloc(SIZE);
+  memcpy(data, text, SIZE);
+  return data;
 }
-typedef Server;
+
+struct LogList {
+  char **logs;
+  size_t logs_len;
+
+  void AppendLog(const char *text);
+};
+
+struct Server {
+  LogList logs;
+  ENetHost *host;
+};
+
+void LogList::AppendLog(const char *text) {
+  if (this->logs_len % 32 == 0) {
+    this->logs = (char**)realloc(this->logs, sizeof *this->logs * (this->logs_len + 32));
+  }
+
+  this->logs[this->logs_len++] = CopyTextMalloc(text);
+}
 
 void HandleEvents(Server *server) {
-  INFO("Listening to events.");
   ENetEvent event;
-  while (enet_host_service(server->host, &event, 1000) > 0) {
-    INFO("Got event!");
+  while (enet_host_service(server->host, &event, 0) > 0) {
+    LOG_INFO("Got event!");
     switch (event.type) {
       case ENET_EVENT_TYPE_CONNECT:
-        INFO("Client connected.");
+        LOG_INFO("Client connected.");
         break;
       case ENET_EVENT_TYPE_DISCONNECT:
-        INFO("Client disconnected.");
+        LOG_INFO("Client disconnected.");
         break;
       case ENET_EVENT_TYPE_RECEIVE:
-        INFO("Recieved data: %s.", event.packet->data);
+        LOG_INFO("Recieved data: %s.", event.packet->data);
+        server->logs.AppendLog((const char*)event.packet->data);
         enet_packet_destroy(event.packet);
         break;
       case ENET_EVENT_TYPE_NONE:
-        INFO("None event.");
+        LOG_INFO("None event.");
         break;
     }
   }
@@ -36,17 +59,17 @@ Server HostServer(int port) {
   address.port = port;
 
   enet_address_set_host(&address, "127.0.0.1");
-  INFO("Hosting server.");
+  LOG_INFO("Hosting server.");
   ENetHost *server = enet_host_create(&address, DEFAULT_CLIENT_CAP, DEFAULT_CHAN_CAP, 0, 0);
   if (server == NULL) {
-    ERROR("Failed to start server.");
+    LOG_ERROR("Failed to start server.");
   }
 
   return (Server){.host = server};
 }
 
 void StopServer(Server *server) {
-  INFO("Destroying server.");
+  LOG_INFO("Destroying server.");
   enet_host_destroy(server->host);
 }
 
@@ -61,18 +84,23 @@ void StopServer(Server *server) {
 #define SOKOL_IMGUI_IMPL
 #include "lib/sokol/util/sokol_imgui.h"
 
-static bool show_test_window = true;
-static bool show_another_window = false;
-
 static sg_pass_action pass_action;
 
+ImGuiTextFilter TEXT_FILTER;
 Server GLOBAL_SERVER;
+ImFont *MAIN_FONT;
+
+void CloseServer() {
+  StopServer(&GLOBAL_SERVER);
+
+  LOG_INFO("Deinitializing enet.");
+  enet_deinitialize();
+}
 
 // Termination via signal.
 void HandleSignal(int signal) {
-  void HandleCleanUp();
-
-  HandleCleanUp();
+  CloseServer();
+  exit(0);
 }
 
 void HandleInit(void) {
@@ -81,10 +109,27 @@ void HandleInit(void) {
   desc.context = sapp_sgcontext();
   sg_setup(&desc);
 
-  // use sokol-imgui with all default-options (we're not doing
-  // multi-sampled rendering or using non-default pixel formats)
+  // Iniitialize ImGui.
   simgui_desc_t simgui_desc = { };
   simgui_setup(&simgui_desc);
+  auto &io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  MAIN_FONT = io.Fonts->AddFontFromFileTTF("data/Roboto.ttf", 16);
+
+  unsigned char* font_pixels;
+  int font_width, font_height;
+  io.Fonts->GetTexDataAsRGBA32(&font_pixels, &font_width, &font_height);
+  sg_image_desc img_desc = { };
+  img_desc.width = font_width;
+  img_desc.height = font_height;
+  img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+  img_desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
+  img_desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+  img_desc.min_filter = SG_FILTER_LINEAR;
+  img_desc.mag_filter = SG_FILTER_LINEAR;
+  img_desc.data.subimage[0][0].ptr = font_pixels;
+  img_desc.data.subimage[0][0].size = font_width * font_height * 4;
+  io.Fonts->TexID = (ImTextureID)(uintptr_t) sg_make_image(&img_desc).id;
 
   // initial clear color
   pass_action.colors[0].action = SG_ACTION_CLEAR;
@@ -92,47 +137,46 @@ void HandleInit(void) {
 
   // Initialize enet.
   if (enet_initialize() != 0) {
-    ERROR("Failed to initialize enet.");
+    LOG_ERROR("Failed to initialize enet.");
   }
 
-  INFO("Enet initialized.");
+
+  LOG_INFO("Enet initialized.");
 
   GLOBAL_SERVER = HostServer(DEFAULT_PORT);
   signal(SIGINT, HandleSignal);
 }
 
+void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
+  for (int i = 0; i < list->logs_len; ++i) {
+    if (filter->PassFilter(list->logs[i])) {
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
+      ImGui::PushID(i);
+      ImGui::Selectable(list->logs[i]);
+      ImGui::PopID();
+      ImGui::PopStyleColor(1);
+    }
+  }
+}
+
 void HandleFrame(void) {
+  HandleEvents(&GLOBAL_SERVER);
+
   const int width = sapp_width();
   const int height = sapp_height();
   simgui_new_frame({ width, height, sapp_frame_duration(), sapp_dpi_scale() });
 
-  // 1. Show a simple window
-  // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
-  static float f = 0.0f;
-  ImGui::Text("Hello, world!");
-  ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-  ImGui::ColorEdit3("clear color", &pass_action.colors[0].value.r);
-  if (ImGui::Button("Test Window")) show_test_window ^= 1;
-  if (ImGui::Button("Another Window")) show_another_window ^= 1;
-  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-  ImGui::Text("w: %d, h: %d, dpi_scale: %.1f", sapp_width(), sapp_height(), sapp_dpi_scale());
-  if (ImGui::Button(sapp_is_fullscreen() ? "Switch to windowed" : "Switch to fullscreen")) {
-      sapp_toggle_fullscreen();
-  }
-
-  // 2. Show another simple window, this time using an explicit Begin/End pair
-  if (show_another_window) {
-    ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Another Window", &show_another_window);
-    ImGui::Text("Hello");
+  ImGui::PushFont(MAIN_FONT);
+    ImGui::SetNextWindowPos({0, 0});
+    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+    ImGui::Begin("Root window", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+      TEXT_FILTER.Draw();
+      ImGui::Separator();
+      ImGui::BeginChild("Scroller", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        DisplayLogList(&GLOBAL_SERVER.logs, &TEXT_FILTER);
+      ImGui::EndChild();
     ImGui::End();
-  }
-
-  // 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowDemoWindow()
-  if (show_test_window) {
-    ImGui::SetNextWindowPos(ImVec2(460, 20), ImGuiCond_FirstUseEver);
-    ImGui::ShowDemoWindow();
-  }
+  ImGui::PopFont();
 
   // the sokol_gfx draw pass
   sg_begin_default_pass(&pass_action, width, height);
@@ -142,11 +186,7 @@ void HandleFrame(void) {
 }
 
 void HandleCleanUp(void) {
-  StopServer(&GLOBAL_SERVER);
-
-  INFO("Deinitializing enet.");
-  enet_deinitialize();
-
+  CloseServer();
   simgui_shutdown();
   sg_shutdown();
 }

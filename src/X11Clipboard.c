@@ -5,6 +5,7 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
+#include "Common.h"
 
 static struct {
   Display *dpy;
@@ -44,10 +45,10 @@ char *GetSelectionValue(Window window, Atom selection) {
 
   if (type == INCREMENTAL) {
     // No incremental fetching support.
-    ERROR("Tried to fetch incrementally. Can't.");
+    LOG_ERROR("Tried to fetch incrementally. Can't.");
   }
 
-  INFO("Selection size is %ld bytes.", size);
+  LOG_INFO("Selection size is %ld bytes.", size);
 
   // Fetch data now.
   // We pass offset twice into output because we don't care about it, and dont' want to overwrite the size.
@@ -62,17 +63,17 @@ char *GetSelectionValue(Window window, Atom selection) {
 void ClipboardThread(Display *dpy) {
   while (1) {
     sem_wait(&CLIPBOARD_SEMAPHORE_CLIENT);
-    INFO("Got signal to handle clipboard event.");
+    LOG_INFO("Got signal to handle clipboard event.");
     XEvent event;
     XNextEvent(CLIPBOARD_DATA.dpy, &event);
 
     switch (event.type) {
       case SelectionNotify:
-        INFO("Got notification about selections.");
+        LOG_INFO("Got notification about selections.");
         if (event.xselection.property == None) {
-          ERROR("Can not convert formats.");
+          LOG_ERROR("Can not convert formats.");
         } else {
-          INFO("Selection value: \x1b[33m%s\x1b[0m", GetSelectionValue(CLIPBOARD_DATA.me, CLIPBOARD_DATA.stolen));
+          LOG_INFO("Selection value: \x1b[33m%s\x1b[0m", GetSelectionValue(CLIPBOARD_DATA.me, CLIPBOARD_DATA.stolen));
         }
         sem_post(&CLIPBOARD_SEMAPHORE_SERVER);
     }
@@ -84,27 +85,27 @@ void RequestClipboardData() {
   // Find selection owner
   CLIPBOARD_DATA.they = XGetSelectionOwner(CLIPBOARD_DATA.dpy, CLIPBOARD_DATA.clipboard);
   if (CLIPBOARD_DATA.they == None) {
-    ERROR("No selection owner.");
+    LOG_ERROR("No selection owner.");
   }
 
   // Read owner window title
   char *window_name = NULL;
   XFetchName(CLIPBOARD_DATA.dpy, CLIPBOARD_DATA.they, &window_name);
   if (window_name == NULL){
-    INFO("Owner of clipboard doesn't have a title, their id is 0x%lx.", CLIPBOARD_DATA.they);
+    LOG_INFO("Owner of clipboard doesn't have a title, their id is 0x%lx.", CLIPBOARD_DATA.they);
   } else {
-    INFO("Owner of clipboard is: \"%s\".", window_name);
+    LOG_INFO("Owner of clipboard is: \"%s\".", window_name);
   }
   XFree(window_name);
 
   // Event request
   XConvertSelection(CLIPBOARD_DATA.dpy, CLIPBOARD_DATA.clipboard, CLIPBOARD_DATA.utf8, CLIPBOARD_DATA.stolen, CLIPBOARD_DATA.me, CurrentTime);
 
-  INFO("Requesting clipboard data.");
+  LOG_INFO("Requesting clipboard data.");
   // Request data
   sem_post(&CLIPBOARD_SEMAPHORE_CLIENT);
   sem_wait(&CLIPBOARD_SEMAPHORE_SERVER);
-  INFO("Semaphore gives OK.");
+  LOG_INFO("Semaphore gives OK.");
 }
 
 void ClipboardInit() {
@@ -114,10 +115,10 @@ void ClipboardInit() {
   CLIPBOARD_DATA.dpy = XOpenDisplay(NULL);
 
   if (CLIPBOARD_DATA.dpy == NULL) {
-    ERROR("Can not open display.");
+    LOG_ERROR("Can not open display.");
   }
 
-  INFO("Opened display.");
+  LOG_INFO("Opened display.");
 
   // Init some atoms
   CLIPBOARD_DATA.utf8 = XInternAtom(CLIPBOARD_DATA.dpy, "UTF8_STRING", False);
@@ -129,10 +130,10 @@ void ClipboardInit() {
 
   if ((CLIPBOARD_DATA.child_pid = fork())) {
     if (CLIPBOARD_DATA.child_pid < 0) {
-      ERROR("Fork failed.");
+      LOG_ERROR("Fork failed.");
     }
   } else {
-    INFO("Fork started.");
+    LOG_INFO("Fork started.");
     ClipboardThread(CLIPBOARD_DATA.dpy);
   }
 }
@@ -140,6 +141,6 @@ void ClipboardInit() {
 void ClipboardDeinit() {
   // Deinit
   XCloseDisplay(CLIPBOARD_DATA.dpy);
-  INFO("Closed display.");
+  LOG_INFO("Closed display.");
 }
 

@@ -4,8 +4,8 @@
 #include <stdio.h>
 
 #ifndef DISABLE_LOGS
-#define ERROR(...) (printf("\x1b[31merror\x1b[0m: " __VA_ARGS__), printf("\n"), exit(-1))
-#define INFO(...) (printf("\x1b[34minfo\x1b[0m: " __VA_ARGS__), printf("\n"))
+#define LOG_ERROR(...) (printf("\x1b[31mLOG_ERROR\x1b[0m: " __VA_ARGS__), printf("\n"), exit(-1))
+#define LOG_INFO(...) (printf("\x1b[34mLOG_INFO\x1b[0m: " __VA_ARGS__), printf("\n"))
 #endif
 
 #define DEFAULT_PORT       4891
