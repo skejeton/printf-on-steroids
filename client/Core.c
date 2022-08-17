@@ -10,8 +10,7 @@
 struct {
   ENetPeer *peer;
   ENetHost *host;
-  bool connected;
-  char data[1 << 12];
+  char data[1 << 14];
   size_t data_len;
 }
 typedef Client;
@@ -28,10 +27,19 @@ static Client StartClient() {
   }
 
   ENetPeer *peer = enet_host_connect(host, &address, 2, 0);
-
   if (peer == NULL) {
     LOG_ERROR("Failed to create peer.");
   }
+
+  ENetEvent event;
+  if (enet_host_service (host, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
+    LOG_INFO("Connected to server.");
+  } else {
+    enet_peer_reset(peer);
+    enet_host_destroy(host);
+    LOG_ERROR("Failed to connect to server.");
+  }
+
 
   return (Client){.peer = peer, .host = host};
 }
@@ -67,36 +75,33 @@ static void* CoreThread(void *param) {
     LOG_INFO("Data len is %zu.", GLOBAL_CLIENT.data_len);
     running = running || GLOBAL_CLIENT.data_len > 0;
     int npackets = 0;
-    if (GLOBAL_CLIENT.connected) {
-      start_seq_number = GLOBAL_CLIENT.peer->channels[0].outgoingReliableSequenceNumber;
+    start_seq_number = GLOBAL_CLIENT.peer->channels[0].outgoingReliableSequenceNumber;
 
-      if (GLOBAL_CLIENT.data_len > 0) {
-        size_t i = 0;
-        while (i < GLOBAL_CLIENT.data_len) {
-          void *datum = GLOBAL_CLIENT.data+i;
-          size_t datum_size = *(uint32_t*)datum;
+    if (GLOBAL_CLIENT.data_len > 0) {
+      size_t i = 0;
+      while (i < GLOBAL_CLIENT.data_len) {
+        void *datum = GLOBAL_CLIENT.data+i;
+        size_t datum_size = *(uint32_t*)datum;
 
-          ENetPacket *packet = enet_packet_create(datum, datum_size, ENET_PACKET_FLAG_RELIABLE);
-          enet_peer_send(GLOBAL_CLIENT.peer, 0, packet);
-          npackets++;
+        ENetPacket *packet = enet_packet_create(datum, datum_size, ENET_PACKET_FLAG_RELIABLE);
+        enet_peer_send(GLOBAL_CLIENT.peer, 0, packet);
+        npackets++;
 
-          i += datum_size;
-        }
-
-        GLOBAL_CLIENT.data_len = 0;
+        i += datum_size;
       }
-      LOG_INFO("Sending %d packets.", npackets);
+
+      GLOBAL_CLIENT.data_len = 0;
     }
+    LOG_INFO("Sending %d packets.", npackets);
 
     pthread_mutex_unlock(&MUTEX);
 
     ENetEvent event;
     LOG_INFO("Servicing events.");
-    while (enet_host_service(GLOBAL_CLIENT.host, &event, 10*(npackets+1)) > 0) {
+    while (enet_host_service(GLOBAL_CLIENT.host, &event, 5) > 0) {
       switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT: 
-          LOG_INFO("Server connected.");
-          GLOBAL_CLIENT.connected = true;
+          LOG_INFO("Server connected again WTF?.");
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
           LOG_INFO("Server disconnected.");
@@ -112,6 +117,12 @@ static void* CoreThread(void *param) {
 
     LOG_INFO("Done servicing events.");
   }
+
+  // I need it to ensure all the logs will sync up.
+  // This might take some time but this is an ok estimate. 
+  // This is a hacky way of doing it, I should fix it. (FIXME)
+  ENetEvent event;
+  while (enet_host_service(GLOBAL_CLIENT.host, &event, 1000) > 0);
 
   StopClient(&GLOBAL_CLIENT);
 

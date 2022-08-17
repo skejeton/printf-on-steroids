@@ -1,4 +1,15 @@
+
+#include <stdarg.h>
 #include "Core.c"
+
+void P2_Printf(int line, const char *file, const char *fmt, ...) {
+  va_list ap;
+  char buf[4096];
+  va_start(ap, fmt);
+  vsnprintf(buf, 4096, fmt, ap);
+  va_end(ap);
+  Core_OutputLog((LogEntry){.line=line,.file=(char*)file,.data=buf});
+}
 
 #define P2_Print(s) Core_OutputLog((LogEntry){.line=__LINE__,.file=__FILE__,.data=(s)})
 

@@ -13,6 +13,53 @@ char *CopyTextMalloc(const char *text) {
   return data;
 }
 
+struct Category {
+  const char *name;
+  size_t *handles;
+  size_t handles_len;
+};
+
+struct CategorizedList {
+  Category *categories;
+  size_t categories_len;
+
+  void Append(const char *category, size_t handle);
+  void Deinit();
+};
+
+void CategorizedList::Append(const char *category, size_t handle) {
+  // Find category.
+  Category *cat = NULL;
+  for (int i = 0; i < this->categories_len; ++i) {
+    if (strcmp(this->categories[i].name, category) == 0) {
+      cat = &this->categories[i];
+    }
+  }
+
+  // If not found, create.
+  if (cat == NULL) {
+    if (this->categories_len % 32 == 0) {
+      this->categories = (Category*)realloc(this->categories, sizeof(Category) * (this->categories_len + 32));
+    }
+    cat = &this->categories[this->categories_len++];
+    *cat = {}; 
+    cat->name = category;
+  }
+
+  // Add entry to the category.
+  if (cat->handles_len % 32 == 0) {
+    cat->handles = (size_t*)realloc(cat->handles, sizeof(size_t) * (cat->handles_len + 32));
+  }
+  cat->handles[cat->handles_len++] = handle;
+}
+
+void CategorizedList::Deinit() {
+  for (int i = 0; i < this->categories_len; ++i) {
+    free(this->categories[i].handles);
+  }
+  free(this->categories);
+}
+
 struct LogList {
   LogEntry *logs;
   size_t logs_len;
@@ -27,7 +74,7 @@ struct Server {
 
 void LogList::AppendLog(LogEntry entry) {
   if (this->logs_len % 32 == 0) {
-    this->logs = (LogEntry*)realloc(this->logs, sizeof(LogEntry*) * (this->logs_len + 32));
+    this->logs = (LogEntry*)realloc(this->logs, sizeof(LogEntry) * (this->logs_len + 32));
   }
 
   this->logs[this->logs_len++] = entry;
@@ -88,6 +135,8 @@ static sg_pass_action pass_action;
 ImGuiTextFilter TEXT_FILTER;
 Server GLOBAL_SERVER;
 ImFont *MAIN_FONT;
+int sort_by;
+const char *WAYS_TO_SORT[] = {"None", "File"};
 
 void CloseServer() {
   StopServer(&GLOBAL_SERVER);
@@ -143,28 +192,63 @@ void HandleInit(void) {
   LOG_INFO("Enet initialized.");
 
   GLOBAL_SERVER = HostServer(DEFAULT_PORT);
-  // Push faux logs.
-  // This leaks.
-  LogEntry fake_log = {};
-  fake_log.data = strdup("Ok");
-  fake_log.file = strdup("Test.c");
-  fake_log.line = 123;
-
-  GLOBAL_SERVER.logs.AppendLog(fake_log);
 
   signal(SIGINT, HandleSignal);
 }
 
+void DisplayLogEntry(LogEntry *entry, int i, ImGuiTextFilter *filter, bool show_file) {
+  if (filter->PassFilter(entry->data)) {
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
+    ImGui::PushID(i);
+    ImGui::TableNextColumn();
+    if (show_file) {
+      ImGui::Text("%s:%zu", entry->file, entry->line);
+    } else {
+      ImGui::Text("%zu", entry->line);
+    }
+    ImGui::TableNextColumn();
+    ImGui::Selectable(entry->data);
+    ImGui::PopID();
+    ImGui::PopStyleColor(1);
+  }
+} 
+
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
-  for (int i = 0; i < list->logs_len; ++i) {
-    if (filter->PassFilter((char*)list->logs[i].data)) {
-      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
-      ImGui::PushID(i);
-      ImGui::Text("%s:%zu", list->logs[i].file, list->logs[i].line);
-      ImGui::SameLine();
-      ImGui::Selectable((char*)list->logs[i].data);
-      ImGui::PopID();
-      ImGui::PopStyleColor(1);
+  if (sort_by == 1) {
+    // Categorized  
+    CategorizedList categorized_list = {};
+    for (int i = 0; i < list->logs_len; ++i) {
+      categorized_list.Append(list->logs[i].file, i);
+    }
+
+    for (int i = 0; i < categorized_list.categories_len; ++i) {
+      Category *category = &categorized_list.categories[i];
+      ImGui::Indent();
+      if (ImGui::TreeNode(category->name)) {
+        if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingStretchSame)) {
+          ImGui::TableSetupColumn("1", 0, 0.2);
+          ImGui::TableSetupColumn("2", 0, 1.0);
+          for (int j = 0; j < category->handles_len; ++j) {
+            DisplayLogEntry(&list->logs[category->handles[j]], j, filter, false);
+          }
+          ImGui::EndTable();
+        }
+        ImGui::TreePop();
+      }
+      ImGui::Unindent();
+    }
+
+    categorized_list.Deinit();
+  } else {
+    // Uncategorized
+
+    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingStretchSame)) {
+      ImGui::TableSetupColumn("1", 0, 0.2);
+      ImGui::TableSetupColumn("2", 0, 1.0);
+      for (int i = 0; i < list->logs_len; ++i) {
+        DisplayLogEntry(&list->logs[i], i, filter, true);
+      }
+      ImGui::EndTable();
     }
   }
 }
@@ -180,7 +264,10 @@ void HandleFrame(void) {
     ImGui::SetNextWindowPos({0, 0});
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
     ImGui::Begin("Root window", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-      TEXT_FILTER.Draw();
+      TEXT_FILTER.Draw("Filter (inc,-exc).", ImGui::GetWindowSize().x/2);
+      ImGui::SameLine();
+      ImGui::SetNextItemWidth(ImGui::GetWindowSize().x/4);
+      ImGui::ListBox("Sort by", &sort_by, WAYS_TO_SORT, 2);
       ImGui::Separator();
       ImGui::BeginChild("Scroller", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
         DisplayLogList(&GLOBAL_SERVER.logs, &TEXT_FILTER);
