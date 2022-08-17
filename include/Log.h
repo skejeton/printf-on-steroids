@@ -29,7 +29,7 @@ static PacketStream PS_BeginWrite() {
   result.read = false;
   result.origin = malloc(PS_BYTECAP);
   // Skip packet size. Will be written to during finalization.
-  result.data = result.origin + sizeof(uint32_t); 
+  result.data = (uint8_t*)result.origin + sizeof(uint32_t); 
   return result;
 }
 
@@ -37,8 +37,8 @@ static PacketStream PS_BeginRead(void *source) {
   PacketStream result = {0};
   result.read = true;
   result.origin = source;
-  // Skip packet size. Will be written to during finalization.
-  result.data = result.origin + sizeof(uint32_t); 
+  // Skip packet size. 
+  result.data = (uint8_t*)result.origin + sizeof(uint32_t); 
   return result;
 }
 
@@ -64,7 +64,8 @@ static void PS_WriteBytes(PacketStream *ps, void *data, size_t nbytes) {
   } else {
     memcpy(ps->data, data, nbytes);
   }
-  ps->data += nbytes;
+
+  ps->data = (uint8_t*)ps->data+nbytes;
 }
 
 static void PS_WritePointer(PacketStream *ps, void **data, size_t nbytes) {
@@ -79,12 +80,13 @@ static void PS_WritePointer(PacketStream *ps, void **data, size_t nbytes) {
   } else {
     memcpy(ps->data, *data, nbytes);
   }
-  ps->data += nbytes;
+
+  ps->data = (uint8_t*)ps->data+nbytes;
 }
 
 static void PS_WriteString(PacketStream *ps, char **str) {
   if (ps->read) {
-    PS_WritePointer(ps, (void**)str, strlen(ps->data)+1);
+    PS_WritePointer(ps, (void**)str, strlen((char*)ps->data)+1);
   } else {
     PS_WritePointer(ps, (void**)str, strlen(*str)+1);
   }

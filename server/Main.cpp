@@ -14,10 +14,10 @@ char *CopyTextMalloc(const char *text) {
 }
 
 struct LogList {
-  LogEntry **logs;
+  LogEntry *logs;
   size_t logs_len;
 
-  void AppendLog(LogEntry *entry);
+  void AppendLog(LogEntry entry);
 };
 
 struct Server {
@@ -25,9 +25,9 @@ struct Server {
   ENetHost *host;
 };
 
-void LogList::AppendLog(LogEntry *entry) {
+void LogList::AppendLog(LogEntry entry) {
   if (this->logs_len % 32 == 0) {
-    this->logs = (LogEntry**)realloc(this->logs, sizeof(LogEntry*) * (this->logs_len + 32));
+    this->logs = (LogEntry*)realloc(this->logs, sizeof(LogEntry*) * (this->logs_len + 32));
   }
 
   this->logs[this->logs_len++] = entry;
@@ -45,7 +45,7 @@ void HandleEvents(Server *server) {
         LOG_INFO("Client disconnected.");
         break;
       case ENET_EVENT_TYPE_RECEIVE:
- //       server->logs.AppendLog(LogEntryDecode());
+        server->logs.AppendLog(LogEntryDecode(event.packet->data));
         enet_packet_destroy(event.packet);
         break;
       case ENET_EVENT_TYPE_NONE:
@@ -145,12 +145,10 @@ void HandleInit(void) {
   GLOBAL_SERVER = HostServer(DEFAULT_PORT);
   // Push faux logs.
   // This leaks.
-  LogEntry *fake_log = (LogEntry*)malloc(sizeof *fake_log);
-  *fake_log = {};
-  fake_log->data = strdup("Ok");
-  fake_log->data_size = 2;
-  fake_log->file = strdup("Test.c");
-  fake_log->line = 123;
+  LogEntry fake_log = {};
+  fake_log.data = strdup("Ok");
+  fake_log.file = strdup("Test.c");
+  fake_log.line = 123;
 
   GLOBAL_SERVER.logs.AppendLog(fake_log);
 
@@ -159,12 +157,12 @@ void HandleInit(void) {
 
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
   for (int i = 0; i < list->logs_len; ++i) {
-    if (filter->PassFilter((char*)list->logs[i]->data)) {
+    if (filter->PassFilter((char*)list->logs[i].data)) {
       ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
       ImGui::PushID(i);
-      ImGui::Text("%s:%zu", list->logs[i]->file, list->logs[i]->line);
+      ImGui::Text("%s:%zu", list->logs[i].file, list->logs[i].line);
       ImGui::SameLine();
-      ImGui::Selectable((char*)list->logs[i]->data);
+      ImGui::Selectable((char*)list->logs[i].data);
       ImGui::PopID();
       ImGui::PopStyleColor(1);
     }

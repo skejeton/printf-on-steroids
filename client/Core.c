@@ -73,10 +73,10 @@ static void* CoreThread(void *param) {
       if (GLOBAL_CLIENT.data_len > 0) {
         size_t i = 0;
         while (i < GLOBAL_CLIENT.data_len) {
-          size_t datum_size = (uint32_t)GLOBAL_CLIENT.data;
           void *datum = GLOBAL_CLIENT.data+i;
+          size_t datum_size = *(uint32_t*)datum;
 
-          ENetPacket *packet = enet_packet_create(datum, strlen(datum)+1, ENET_PACKET_FLAG_RELIABLE);
+          ENetPacket *packet = enet_packet_create(datum, datum_size, ENET_PACKET_FLAG_RELIABLE);
           enet_peer_send(GLOBAL_CLIENT.peer, 0, packet);
           npackets++;
 
@@ -136,25 +136,18 @@ void Core_Init() {
   pthread_create(&CORE_THREAD_ID, NULL, CoreThread, NULL);
 }
 
-void InsertLogEntry(LogEntry entry) {
-  /*
-  size_t data_size;
-  void *data = LogEntryEncode(entry, &data_size);
-
-  // NOTE: Sizeof relies on static size
-  if (data_size >= (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len)) {
-    LOG_ERROR("Command buffer overflow.");
-  }
-
-  memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, , len);
-  LOG_INFO("Putting data of size %zu at %zu.", len, GLOBAL_CLIENT.data_len);
-  GLOBAL_CLIENT.data_len += len;
-  */
-}
-
-void Core_OutputLog(const char *text) {
+void Core_OutputLog(LogEntry entry) {
   pthread_mutex_lock(&MUTEX);
-    size_t len = strlen(text) + 1;
+    const size_t LIMIT = (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len);
+    void *origin = LogEntryEncode(entry);
+    const size_t OSIZE = PS_PacketSize(origin);
+    if (OSIZE >= LIMIT) {
+      LOG_ERROR("Push data failed.");
+    }
+
+    memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, origin, OSIZE);
+    GLOBAL_CLIENT.data_len += OSIZE;
+    free(origin);
   pthread_mutex_unlock(&MUTEX);
 }
 
