@@ -133,8 +133,8 @@ static sg_pass_action pass_action;
 ImGuiTextFilter TEXT_FILTER;
 Server GLOBAL_SERVER;
 ImFont *MAIN_FONT;
-int sort_by;
-const char *WAYS_TO_SORT[] = {"None", "File"};
+int group_by;
+const char *WAYS_TO_GROUP[] = {"None", "File"};
 
 void CloseServer() {
   StopServer(&GLOBAL_SERVER);
@@ -212,8 +212,8 @@ void DisplayLogEntry(LogEntry *entry, int i, ImGuiTextFilter *filter, bool show_
 } 
 
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
-  if (sort_by == 1) {
-    // Categorized  
+  if (group_by == 1) {
+    // Categorized
     CategorizedList categorized_list = {};
     for (int i = 0; i < list->logs_len; ++i) {
       categorized_list.Append(list->logs[i].file, i);
@@ -265,7 +265,7 @@ void HandleFrame(void) {
       TEXT_FILTER.Draw("Filter (inc,-exc).", ImGui::GetWindowSize().x/2);
       ImGui::SameLine();
       ImGui::SetNextItemWidth(ImGui::GetWindowSize().x/4);
-      ImGui::ListBox("Sort by", &sort_by, WAYS_TO_SORT, 2);
+      ImGui::ListBox("Group by", &group_by, WAYS_TO_GROUP, 2);
       ImGui::Separator();
       ImGui::BeginChild("Scroller", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
         DisplayLogList(&GLOBAL_SERVER.logs, &TEXT_FILTER);

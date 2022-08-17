@@ -39,7 +39,7 @@ int main() {
   P2_Print("The main drawback of printf is that the data is output into the console.");
   P2_Print("This library allows you to sort the logs.");
   P2_Print("It's planned for this library to also visualize things printf can't do, like bitmaps.");
-  P2_Print("$For now in sorting properties you can choose to either sort by inclusion.");
+  P2_Print("$For now in sorting properties you can choose to either filter by inclusion.");
   P2_Print("Or_by_exclusion");
   P2_Print("@Or_by_both");
   P2_Print("That's all I have for now! Cheers :P");
