@@ -1,4 +1,4 @@
-#include "src/Common.h"
+#include <include/Common.h>
 #include <enet/enet.h>
 #include <signal.h>
 #include <string.h>
