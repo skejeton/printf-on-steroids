@@ -28,6 +28,6 @@ set server_in=src\server\Main.cpp src\server\SokolImpl.cpp
 set client_in=src\client\Main.c
 
 clang %server_in% -oserver.exe -g -Isrc -Ilib %enet_flags% %libs% %md%
-clang %client_in% -oclient.exe -g -Isrc -Ilib %enet_flags% %md%
+clang %client_in% -oclient.exe -g -Isrc -Ilib -Iinc %enet_flags% %md%
 
 @popd

@@ -1,34 +1,8 @@
 
-#include <stdbool.h>
-#include <signal.h>
-#include <string.h>
-#include <stdarg.h>
-
-#ifdef _WIN32
-  #define WIN32_LEAN_AND_MEAN
-  #include <Windows.h>
-#else
-  #include <pthread.h>
-#endif
-
-#include <enet/enet.h>
-#include "common/Common.h"
-#include "Thread.c"
-#include "Core.c"
-
-void P2_Printf(int line, const char *file, const char *fmt, ...) {
-  va_list ap;
-  char buf[4096];
-  va_start(ap, fmt);
-  vsnprintf(buf, 4096, fmt, ap);
-  va_end(ap);
-  Core_OutputLog((LogEntry){.line=line,.file=(char*)file,.data=buf});
-}
-
-#define P2_Print(s, x) Core_OutputLog((LogEntry){.line=__LINE__,.file=x,.data=(s)})
+#include "P2.c"
 
 int main() {
-  Core_Init();
+  P2_Init();
 
 #if 0
   Core_OutputLog("Oh and also, the logs preserve across runs.");
@@ -45,6 +19,6 @@ int main() {
   P2_Print("That's all I have for now! Cheers :P", "file2.c");
 #endif
 
-  Core_Deinit();
+  P2_Terminate();
   return 0;
 }

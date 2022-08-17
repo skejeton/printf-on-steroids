@@ -44,8 +44,8 @@ static void StopClient(Client *client) {
 
 static void SignalHandler(int signal) {
   // TODO: Don't handle deinit after shutdown (unlikely to happen, but still).
-  void Core_Deinit();
-  Core_Deinit();
+  void P2_Terminate();
+  P2_Terminate();
   exit(0);
 }
 
@@ -124,21 +124,6 @@ static void* CoreThread(void *param) {
   return NULL;
 }
 
-void Core_Init() {
-  if (enet_initialize() != 0) {
-    LOG_ERROR("Failed to initialize enet.");
-  }
-
-  LOG_INFO("Enet initialized.");
-
-  GLOBAL_CLIENT = StartClient();
-
-  MutexInit(&MUTEX);
-  signal(SIGINT, SignalHandler);
-  LOG_INFO("Creating thread.");
-  ThreadCreate(&CORE_THREAD_ID, CoreThread);
-}
-
 void Core_OutputLog(LogEntry entry) {
   MutexLock(&MUTEX);
     const size_t LIMIT = (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len);
@@ -152,12 +137,4 @@ void Core_OutputLog(LogEntry entry) {
     GLOBAL_CLIENT.data_len += OSIZE;
     free(origin);
   MutexUnlock(&MUTEX);
-}
-
-void Core_Deinit() {
-  LOG_INFO("Stopping.");
-  CORE_THREAD_RUNNING = 0;
-  ThreadJoin(&CORE_THREAD_ID);
-  LOG_INFO("Thread finished.");
-  MutexDestroy(&MUTEX);
 }
