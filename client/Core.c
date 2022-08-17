@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include "include/Common.h"
+#include "include/Log.h"
 #include <signal.h>
 #include <string.h>
 
@@ -72,8 +73,8 @@ static void* CoreThread(void *param) {
       if (GLOBAL_CLIENT.data_len > 0) {
         size_t i = 0;
         while (i < GLOBAL_CLIENT.data_len) {
-          char *datum = GLOBAL_CLIENT.data+i;
-          size_t datum_size = strlen(datum)+1;
+          size_t datum_size = (uint32_t)GLOBAL_CLIENT.data;
+          void *datum = GLOBAL_CLIENT.data+i;
 
           ENetPacket *packet = enet_packet_create(datum, strlen(datum)+1, ENET_PACKET_FLAG_RELIABLE);
           enet_peer_send(GLOBAL_CLIENT.peer, 0, packet);
@@ -135,16 +136,25 @@ void Core_Init() {
   pthread_create(&CORE_THREAD_ID, NULL, CoreThread, NULL);
 }
 
+void InsertLogEntry(LogEntry entry) {
+  /*
+  size_t data_size;
+  void *data = LogEntryEncode(entry, &data_size);
+
+  // NOTE: Sizeof relies on static size
+  if (data_size >= (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len)) {
+    LOG_ERROR("Command buffer overflow.");
+  }
+
+  memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, , len);
+  LOG_INFO("Putting data of size %zu at %zu.", len, GLOBAL_CLIENT.data_len);
+  GLOBAL_CLIENT.data_len += len;
+  */
+}
+
 void Core_OutputLog(const char *text) {
   pthread_mutex_lock(&MUTEX);
     size_t len = strlen(text) + 1;
-    // NOTE: Sizeof relies on static size
-    if (len >= (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len)) {
-      LOG_ERROR("Command buffer overflow.");
-    }
-    memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, text, len);
-    LOG_INFO("Putting data of size %zu at %zu.", len, GLOBAL_CLIENT.data_len);
-    GLOBAL_CLIENT.data_len += len;
   pthread_mutex_unlock(&MUTEX);
 }
 

@@ -1,4 +1,7 @@
 #include <include/Common.h>
+extern "C" {
+#include <include/Log.h>
+}
 #include <enet/enet.h>
 #include <signal.h>
 #include <string.h>
@@ -11,10 +14,10 @@ char *CopyTextMalloc(const char *text) {
 }
 
 struct LogList {
-  char **logs;
+  LogEntry **logs;
   size_t logs_len;
 
-  void AppendLog(const char *text);
+  void AppendLog(LogEntry *entry);
 };
 
 struct Server {
@@ -22,12 +25,12 @@ struct Server {
   ENetHost *host;
 };
 
-void LogList::AppendLog(const char *text) {
+void LogList::AppendLog(LogEntry *entry) {
   if (this->logs_len % 32 == 0) {
-    this->logs = (char**)realloc(this->logs, sizeof *this->logs * (this->logs_len + 32));
+    this->logs = (LogEntry**)realloc(this->logs, sizeof(LogEntry*) * (this->logs_len + 32));
   }
 
-  this->logs[this->logs_len++] = CopyTextMalloc(text);
+  this->logs[this->logs_len++] = entry;
 }
 
 void HandleEvents(Server *server) {
@@ -42,8 +45,7 @@ void HandleEvents(Server *server) {
         LOG_INFO("Client disconnected.");
         break;
       case ENET_EVENT_TYPE_RECEIVE:
-        LOG_INFO("Recieved data: %s.", event.packet->data);
-        server->logs.AppendLog((const char*)event.packet->data);
+ //       server->logs.AppendLog(LogEntryDecode());
         enet_packet_destroy(event.packet);
         break;
       case ENET_EVENT_TYPE_NONE:
@@ -141,15 +143,28 @@ void HandleInit(void) {
   LOG_INFO("Enet initialized.");
 
   GLOBAL_SERVER = HostServer(DEFAULT_PORT);
+  // Push faux logs.
+  // This leaks.
+  LogEntry *fake_log = (LogEntry*)malloc(sizeof *fake_log);
+  *fake_log = {};
+  fake_log->data = strdup("Ok");
+  fake_log->data_size = 2;
+  fake_log->file = strdup("Test.c");
+  fake_log->line = 123;
+
+  GLOBAL_SERVER.logs.AppendLog(fake_log);
+
   signal(SIGINT, HandleSignal);
 }
 
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
   for (int i = 0; i < list->logs_len; ++i) {
-    if (filter->PassFilter(list->logs[i])) {
+    if (filter->PassFilter((char*)list->logs[i]->data)) {
       ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
       ImGui::PushID(i);
-      ImGui::Selectable(list->logs[i]);
+      ImGui::Text("%s:%zu", list->logs[i]->file, list->logs[i]->line);
+      ImGui::SameLine();
+      ImGui::Selectable((char*)list->logs[i]->data);
       ImGui::PopID();
       ImGui::PopStyleColor(1);
     }
