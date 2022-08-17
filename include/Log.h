@@ -20,14 +20,14 @@ struct LogEntry {
 struct PacketStream typedef PacketStream;
 struct PacketStream {
   bool read;
-  void *origin;
-  void *data;
+  uint8_t *origin;
+  uint8_t *data;
 };
 
 static PacketStream PS_BeginWrite() {
   PacketStream result = {0};
   result.read = false;
-  result.origin = malloc(PS_BYTECAP);
+  result.origin = (uint8_t*)malloc(PS_BYTECAP);
   // Skip packet size. Will be written to during finalization.
   result.data = (uint8_t*)result.origin + sizeof(uint32_t); 
   return result;
@@ -36,9 +36,10 @@ static PacketStream PS_BeginWrite() {
 static PacketStream PS_BeginRead(void *source) {
   PacketStream result = {0};
   result.read = true;
-  result.origin = source;
+  result.origin = (uint8_t*)source;
   // Skip packet size. 
   result.data = (uint8_t*)result.origin + sizeof(uint32_t); 
+
   return result;
 }
 
@@ -49,7 +50,7 @@ static PacketStream PS_BeginRead(void *source) {
 */
 static void* PS_FinalizeWrite(PacketStream *ps) {
   // Write packet size.
-  *(uint32_t*)ps->origin = (uint8_t*)ps->data-(uint8_t*)ps->origin;
+  *(uint32_t*)ps->origin = (uint32_t)(ps->data-ps->origin);
   return ps->origin;
 }
 
