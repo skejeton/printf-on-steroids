@@ -25,6 +25,6 @@ set libs=-lbin\enet.lib -lbin\imgui.lib -lWinmm -lWs2_32
 set lib_inc=-Ilib/enet/include -Ilib/imgui
 
 clang -g server\Main.cpp server\SokolImpl.cpp -I. %lib_inc% %libs% %md%
-rem clang -g src\MumboJumbo.c
+clang -g src\MumboJumbo.c -I. -c
 
 @popd

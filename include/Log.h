@@ -4,48 +4,46 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct LogEntry typedef LogEntry;
 struct LogEntry {
-  uint64_t src_line;
-  uint64_t src_file_offs;
+  uint64_t line;
+  char    *file;
   size_t   data_size;
+  void    *data;
 };
 
 // For now implementation lives here
 
-static inline LogEntry *
-LogEntryCreate_(uint64_t src_line, char *src_file, size_t data_size, void *data)
-{
-  // Calculate offsets
-  size_t src_file_len = strlen(src_file);
-  size_t data_offs = sizeof(LogEntry);
-  size_t src_file_offs = data_offs + data_size;
-  size_t packet_size = sizeof(LogEntry) + data_size + (src_file_len+1);
-  // Create the header
-  LogEntry *entry = malloc(packet_size);
-  entry->src_line = src_line;
-  entry->src_file_offs = src_file_offs;
-  entry->data_size = data_size;
-  // Write the data for the data and the filename
-  void *header_data = (uint8_t *)entry + data_offs;
-  memcpy(header_data, data, data_size);
-  void *src_file_data = (uint8_t *)entry + src_file_offs;
-  memcpy(src_file_data, src_file, src_file_len+1);
-  return entry;
-}
-
 static inline void *
-LogEntryData(LogEntry *entry, size_t *out_data_size) {
-  void *header_data = (uint8_t *entry) + sizeof(LogEntry);
-  *out_data_size = entry->data_size;
+LogEntryEncode(uint64_t line, char *file, size_t data_size, void *data, uint64_t *out_size) {
+  size_t hdr_size = sizeof(uint64_t) + sizeof(char *) + sizeof(size_t);
+  size_t str_size = strlen(file);
+  // Allocate log entry
+  size_t log_entry_size = hdr_size + data_size + str_size;
+  void *log_entry = malloc(log_entry_size);
+  size_t data_offs = 0+hdr_size;
+  size_t str_offs = data_offs + data_size;
+  // Write the data
+  ((uint64_t *)log_entry)[0] = line;
+  ((uint64_t *)log_entry)[1] = str_offs;
+  ((uint64_t *)log_entry)[2] = data_size;
+  memcpy((uint8_t *)log_entry+data_offs, data, data_size);
+  memcpy((uint8_t *)log_entry+str_offs,  file, str_size);
+  *out_size = log_entry_size;
+  return log_entry;
 }
 
-static inline char *
-LogEntryLocation(LogEntry *entry, uint64_t *out_line) {
-  void *src_file = (uint8_t *)entry + entry->src_file_offs;
-  *out_line = entry->src_line;
-  return src_file;
+static inline LogEntry
+LogEntryDecode(size_t data_size, void *data, size_t *out_size) {
+  size_t hdr_size = sizeof(uint64_t) + sizeof(char *) + sizeof(size_t);
+  LogEntry entry;
+  entry.line = ((uint64_t *)data)[0];
+  entry.file = (void *)(data + ((uint64_t *)data)[1]);
+  *out_size = ((uint64_t *)data)[2];
+  entry.data = (void *)((uint8_t *)data + hdr_size);
+  return entry;
 }
 
 #endif // H_LOG
