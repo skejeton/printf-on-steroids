@@ -2,7 +2,7 @@
 #include <enet/enet.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include "src/Common.h"
+#include "include/Common.h"
 #include <signal.h>
 #include <string.h>
 
