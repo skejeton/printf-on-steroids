@@ -1,4 +1,4 @@
-#include <bits/types/stack_t.h>
+// #include <bits/types/stack_t.h>
 #include <enet/enet.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -73,7 +73,7 @@ static void* CoreThread(void *param) {
       if (GLOBAL_CLIENT.data_len > 0) {
         size_t i = 0;
         while (i < GLOBAL_CLIENT.data_len) {
-          size_t datum_size = (uint32_t)GLOBAL_CLIENT.data;
+          size_t datum_size = (size_t)GLOBAL_CLIENT.data;
           void *datum = GLOBAL_CLIENT.data+i;
 
           ENetPacket *packet = enet_packet_create(datum, strlen(datum)+1, ENET_PACKET_FLAG_RELIABLE);

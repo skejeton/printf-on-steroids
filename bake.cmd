@@ -21,10 +21,14 @@ if not exist bin\imgui.lib (
 )
 
 set md=-Wl,-nodefaultlib:libcmt -D_DLL -lmsvcrt -Xlinker /NODEFAULTLIB:MSVCRTD
-set libs=-lbin\enet.lib -lbin\imgui.lib -lWinmm -lWs2_32
-set lib_inc=-Ilib/enet/include -Ilib/imgui
+set libs=-lbin\imgui.lib -lWinmm -lWs2_32
+set lib_inc=-Ilib/imgui -Ilib\thread\src
 
-clang -g server\Main.cpp server\SokolImpl.cpp -I. %lib_inc% %libs% %md%
-clang -g src\MumboJumbo.c -I. -c
+set enet_flags=-Ilib/enet/include -lbin\enet.lib
+set server_in=server\Main.cpp server\SokolImpl.cpp
+set client_in=client\Main.c
+
+clang %server_in% -oserver.exe -g -I. %enet_flags% %lib_inc% %libs% %md%
+clang %client_in% -oclient.obj -g -I. %enet_flags% -c
 
 @popd

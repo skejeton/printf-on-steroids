@@ -147,9 +147,9 @@ void HandleInit(void) {
   // This leaks.
   LogEntry *fake_log = (LogEntry*)malloc(sizeof *fake_log);
   *fake_log = {};
-  fake_log->data = strdup("Ok");
-  fake_log->data_size = 2;
-  fake_log->file = strdup("Test.c");
+  fake_log->data = _strdup("Ok");
+  // fake_log->data_size = 2;
+  fake_log->file = _strdup("Test.c");
   fake_log->line = 123;
 
   GLOBAL_SERVER.logs.AppendLog(fake_log);
