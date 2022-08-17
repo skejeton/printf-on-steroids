@@ -1,11 +1,3 @@
-// #include <bits/types/stack_t.h>
-#include <enet/enet.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include "include/Common.h"
-#include "include/Log.h"
-#include <signal.h>
-#include <string.h>
 
 struct {
   ENetPeer *peer;
@@ -58,9 +50,9 @@ static void SignalHandler(int signal) {
 }
 
 static Client GLOBAL_CLIENT;
-static pthread_mutex_t MUTEX;
+static Mutex MUTEX;
 _Atomic(int) CORE_THREAD_RUNNING = 1;
-pthread_t CORE_THREAD_ID;
+Thread CORE_THREAD_ID;
 unsigned short start_seq_number = 0;
 
 // TODO: Reliably send packets by recieving acknowledgments.
@@ -71,7 +63,7 @@ static void* CoreThread(void *param) {
     running = CORE_THREAD_RUNNING;
 
     // Push packets from commands.
-    pthread_mutex_lock(&MUTEX);
+    MutexLock(&MUTEX);
     LOG_INFO("Data len is %zu.", GLOBAL_CLIENT.data_len);
     running = running || GLOBAL_CLIENT.data_len > 0;
     int npackets = 0;
@@ -94,7 +86,7 @@ static void* CoreThread(void *param) {
     }
     LOG_INFO("Sending %d packets.", npackets);
 
-    pthread_mutex_unlock(&MUTEX);
+    MutexUnlock(&MUTEX);
 
     ENetEvent event;
     LOG_INFO("Servicing events.");
@@ -141,14 +133,14 @@ void Core_Init() {
 
   GLOBAL_CLIENT = StartClient();
 
-  pthread_mutex_init(&MUTEX, NULL);
+  MutexInit(&MUTEX);
   signal(SIGINT, SignalHandler);
   LOG_INFO("Creating thread.");
-  pthread_create(&CORE_THREAD_ID, NULL, CoreThread, NULL);
+  ThreadCreate(&CORE_THREAD_ID, CoreThread);
 }
 
 void Core_OutputLog(LogEntry entry) {
-  pthread_mutex_lock(&MUTEX);
+  MutexLock(&MUTEX);
     const size_t LIMIT = (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len);
     void *origin = LogEntryEncode(entry);
     const size_t OSIZE = PS_PacketSize(origin);
@@ -159,13 +151,13 @@ void Core_OutputLog(LogEntry entry) {
     memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, origin, OSIZE);
     GLOBAL_CLIENT.data_len += OSIZE;
     free(origin);
-  pthread_mutex_unlock(&MUTEX);
+  MutexUnlock(&MUTEX);
 }
 
 void Core_Deinit() {
   LOG_INFO("Stopping.");
   CORE_THREAD_RUNNING = 0;
-  pthread_join(CORE_THREAD_ID, NULL);
+  ThreadJoin(&CORE_THREAD_ID);
   LOG_INFO("Thread finished.");
-  pthread_mutex_destroy(&MUTEX);
+  MutexDestroy(&MUTEX);
 }

@@ -9,9 +9,9 @@
     #define SOKOL_GLCORE33
 #endif
 
-#include "lib/sokol/sokol_app.h"
-#include "lib/sokol/sokol_gfx.h"
-#include "lib/sokol/sokol_glue.h"
-#include "lib/imgui/imgui.h"
+#include <sokol/sokol_app.h>
+#include <sokol/sokol_gfx.h>
+#include <sokol/sokol_glue.h>
+#include <imgui/imgui.h>
 #define SOKOL_IMGUI_IMPL
-#include "lib/sokol/util/sokol_imgui.h"
+#include <sokol/util/sokol_imgui.h>

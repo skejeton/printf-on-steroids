@@ -1,5 +1,19 @@
 
+#include <stdbool.h>
+#include <signal.h>
+#include <string.h>
 #include <stdarg.h>
+
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <Windows.h>
+#else
+  #include <pthread.h>
+#endif
+
+#include <enet/enet.h>
+#include "common/Common.h"
+#include "Thread.c"
 #include "Core.c"
 
 void P2_Printf(int line, const char *file, const char *fmt, ...) {

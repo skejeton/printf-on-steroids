@@ -1,13 +1,21 @@
+#ifndef H_COMMON
+#define H_COMMON
 
-#ifndef H_LOG
-#define H_LOG
-
-#include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
 #include <wchar.h>
-#include "Common.h"
+
+#ifndef DISABLE_LOGS
+#define LOG_ERROR(...) (printf("\x1b[31mLOG_ERROR\x1b[0m: " __VA_ARGS__), printf("\n"), exit(-1))
+#define LOG_INFO(...) (printf("\x1b[34mLOG_INFO\x1b[0m: " __VA_ARGS__), printf("\n"))
+#endif
+
+#define DEFAULT_PORT       4891
+#define DEFAULT_CLIENT_CAP 32
+#define DEFAULT_CHAN_CAP   2
 
 struct LogEntry typedef LogEntry;
 struct LogEntry {
@@ -137,4 +145,5 @@ LogEntryDecode(size_t data_size, void *data) {
 }
 */
 
-#endif // H_LOG
+
+#endif

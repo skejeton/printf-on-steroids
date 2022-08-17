@@ -1,7 +1,5 @@
-#include <include/Common.h>
-extern "C" {
-#include <include/Log.h>
-}
+
+#include <common/Common.h>
 #include <enet/enet.h>
 #include <signal.h>
 #include <string.h>
@@ -124,11 +122,11 @@ void StopServer(Server *server) {
 
 //////////////////////////////////////////
 
-#include "lib/sokol/sokol_app.h"
-#include "lib/sokol/sokol_gfx.h"
-#include "lib/sokol/sokol_glue.h"
-#include "lib/imgui/imgui.h"
-#include "lib/sokol/util/sokol_imgui.h"
+#include <sokol/sokol_app.h>
+#include <sokol/sokol_gfx.h>
+#include <sokol/sokol_glue.h>
+#include <imgui/imgui.h>
+#include <sokol/util/sokol_imgui.h>
 
 static sg_pass_action pass_action;
 
