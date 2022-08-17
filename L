@@ -43,6 +43,11 @@ target_run() {
   bin/printf2_$1 `argv`
 }
 
+target_test() {
+  cc test/$1.c -I. -g && ./a.out
+  rm a.out
+}
+
 hasargs=1
 
 # Fetch all sparse args
@@ -56,6 +61,9 @@ do
 done
 
 case `getarg 0` in
+  test)
+    target_test `getarg 1`
+  ;;
   build)
     target_build
   ;;
