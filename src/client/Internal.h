@@ -13,6 +13,7 @@
 #include <P2.h>
 #include <enet/enet.h>
 #include <common/Common.h>
+#include <common/LogEntry.h>
 
 struct Mutex typedef Mutex;
 struct Thread typedef Thread;
