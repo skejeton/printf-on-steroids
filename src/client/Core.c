@@ -1,3 +1,4 @@
+#include "Internal.h"
 
 struct {
   ENetPeer *peer;

@@ -1,13 +1,6 @@
+#include "Internal.h"
 struct Mutex  typedef Mutex;
 struct Thread typedef Thread;
-
-static int MutexInit(Mutex *mutex);
-static int MutexLock(Mutex *mutex);
-static int MutexUnlock(Mutex *mutex);
-static int MutexDestroy(Mutex *mutex);
-
-static int ThreadCreate(Thread *thread, void *(*func)(void*));
-static int ThreadJoin(Thread *thread);
 
 #ifdef _WIN32
 

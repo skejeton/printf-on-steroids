@@ -1,4 +1,3 @@
-
 #include "P2.c"
 
 int main() {
