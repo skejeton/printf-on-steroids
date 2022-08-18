@@ -193,57 +193,64 @@ void HandleInit(void) {
   signal(SIGINT, HandleSignal);
 }
 
-void DisplayLogEntry(LogEntry *entry, int i, ImGuiTextFilter *filter, bool show_file) {
-  if (filter->PassFilter(entry->data)) {
-    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
-    ImGui::PushID(i);
-    ImGui::TableNextColumn();
-    if (show_file) {
-      ImGui::Text("%s:%zu", entry->file, entry->line);
-    } else {
-      ImGui::Text("%zu", entry->line);
-    }
-    ImGui::TableNextColumn();
-    ImGui::Selectable(entry->data);
-    ImGui::PopID();
-    ImGui::PopStyleColor(1);
+bool PassLogEntryFilter(ImGuiTextFilter *filter, LogEntry *entry) {
+  return filter->PassFilter(entry->data) || filter->PassFilter(entry->file);
+}
+
+void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
+  ImGui::PushID(i);
+  ImGui::TableNextColumn();
+  if (show_file) {
+    ImGui::Text("%s:%zu", entry->file, entry->line);
+  } else {
+    ImGui::Text("%zu", entry->line);
   }
+  ImGui::TableNextColumn();
+  ImGui::Selectable(entry->data);
+  ImGui::PopID();
+  ImGui::PopStyleColor(1);
 } 
 
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
+  // NOTE(skejeton): I wouldn't need this, but BeginTable then assigns 0 for the fit.
+  if (list->logs_len == 0) {
+    return;
+  }
+
   if (group_by == 1) {
     // Categorized
     CategorizedList categorized_list = {};
     for (int i = 0; i < list->logs_len; ++i) {
-      categorized_list.Append(list->logs[i].file, i);
+      if (PassLogEntryFilter(filter, &list->logs[i])) {
+        categorized_list.Append(list->logs[i].file, i);
+      }
     }
 
     for (int i = 0; i < categorized_list.categories_len; ++i) {
       Category *category = &categorized_list.categories[i];
-      ImGui::Indent();
       if (ImGui::TreeNode(category->name)) {
-        if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingStretchSame)) {
-          ImGui::TableSetupColumn("1", 0, 0.2);
-          ImGui::TableSetupColumn("2", 0, 1.0);
+        ImGui::Indent();
+        if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingFixedFit)) {
           for (int j = 0; j < category->handles_len; ++j) {
-            DisplayLogEntry(&list->logs[category->handles[j]], j, filter, false);
+            DisplayLogEntry(&list->logs[category->handles[j]], j, false);
           }
           ImGui::EndTable();
         }
+        ImGui::Unindent();
         ImGui::TreePop();
       }
-      ImGui::Unindent();
     }
 
     categorized_list.Deinit();
   } else {
     // Uncategorized
 
-    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingStretchSame)) {
-      ImGui::TableSetupColumn("1", 0, 0.2);
-      ImGui::TableSetupColumn("2", 0, 1.0);
+    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_SizingFixedFit)) {
       for (int i = 0; i < list->logs_len; ++i) {
-        DisplayLogEntry(&list->logs[i], i, filter, true);
+        if (PassLogEntryFilter(filter, &list->logs[i])) {
+          DisplayLogEntry(&list->logs[i], i, true);
+        }
       }
       ImGui::EndTable();
     }
