@@ -43,7 +43,7 @@ target_run() {
 }
 
 target_test() {
-  cc test/$1.c -I. -g && ./a.out
+  cc test/$1.c -Isrc -g && ./a.out
   rm a.out
 }
 

@@ -77,6 +77,16 @@ void LogList::AppendLog(LogEntry entry) {
   this->logs[this->logs_len++] = entry;
 }
 
+/* LogList_ClearAssumingPS(log_list)
+// Clears log list assuming the data was allocated by PacketStream.
+*/
+void LogList_ClearAssumingPS(LogList *list) {
+  for (size_t i = 0; i < list->logs_len; ++i) {
+    LogEntryDeinit(&list->logs[i]);
+  }
+  list->logs_len = 0;
+}
+
 void HandleEvents(Server *server) {
   ENetEvent event;
   while (enet_host_service(server->host, &event, 0) > 0) {
@@ -363,14 +373,18 @@ void HandleFrame(void) {
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
     ImGui::Begin("Root window", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
-      if (ImGui::BeginTable("##Split", 3, ImGuiTableFlags_SizingFixedFit)) {
+      if (ImGui::BeginTable("##Split", 4, ImGuiTableFlags_SizingFixedFit)) {
         ImGui::TableSetupColumn("##Filter", ImGuiTableColumnFlags_WidthStretch, 1.0f);
         ImGui::TableNextColumn();
-        TEXT_FILTER.Draw("Filter (inc,-exc).");
+        TEXT_FILTER.Draw("Filter");
         ImGui::TableNextColumn();
         ImGui::Combo("Group by", &group_by, WAYS_TO_GROUP, 2);
         ImGui::TableNextColumn();
         ImGui::Checkbox("Monitor", &is_monitor);
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Clear")) {
+          LogList_ClearAssumingPS(&GLOBAL_SERVER.logs);
+        }
         if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 1.0) {
           ImGui::SetTooltip("Shows latest logs from their group.");
         }

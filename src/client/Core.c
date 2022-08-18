@@ -147,6 +147,7 @@ void Core_OutputLog(LogEntry entry) {
     if (OSIZE >= LIMIT) {
       LOG_ERROR("Push data failed.");
     }
+  
 
     memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, origin, OSIZE);
     GLOBAL_CLIENT.data_len += OSIZE;

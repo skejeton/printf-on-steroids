@@ -1,29 +1,6 @@
 #include <common/Common.h>
 #include <ctype.h>
 
-void DumpBinary(void *binary, size_t size) {
-  const int CELLS_PER_ROW = 80/4;
-
-  for (size_t i = 0; i < size; i += CELLS_PER_ROW) {
-    const size_t CELLS = (size - i) > CELLS_PER_ROW ? CELLS_PER_ROW : (size - i);
-
-    printf("%04zx ", i);
-    for (size_t j = 0; j < CELLS; ++j) {
-      uint8_t datum = ((uint8_t*)binary)[i+j];
-      if (isprint(datum)) {
-        printf("%c  ", datum);
-      } else {
-        printf(".  ");
-      }
-    }
-    printf("\n%04zx ", i);
-    for (size_t j = 0; j < CELLS; ++j) {
-      printf("%02x ", ((uint8_t*)binary)[i+j]);
-    }
-    printf("\n");
-  }
-}
-
 void DumpLogEntry(LogEntry *e) {
   LOG_INFO("%s:%zu\t%s", e->file, e->line, e->data);
 }
