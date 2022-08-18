@@ -47,5 +47,11 @@ int main() {
     DumpTest(&test_out);
   }
 
+  // Free
+  {
+    PacketStream ps = PS_BeginFree(origin);
+    ConvTest(&ps, &test_out);
+  }
+
   return 0;
 }

@@ -145,12 +145,13 @@ static void PS_WritePointer(PacketStream *ps, void **data, size_t nbytes) {
 }
 
 
-uint32_t PS_WriteLen(PacketStream *ps, uint32_t *len, void **data, size_t datum_size) {
+uint32_t PS_WriteLen(PacketStream *ps, uint32_t *len, void **data, size_t datum_size, uint32_t **data_out) {
   uint32_t length = *(uint32_t*)PS_WriteBytes(ps, len, sizeof(uint32_t));
   if (ps->mode == PS_MODE_READ) { 
     *data = malloc(datum_size * length);
   }
 
+  *data_out = ps->mode == PS_MODE_FREE ? *data : NULL;
   return length;
 }
 
@@ -158,8 +159,9 @@ static void PS_WriteString(PacketStream *ps, char **str) {
   return PS_WritePointer(ps, (void**)str, ps->mode == PS_MODE_READ ? 0 : strlen(*str)+1);
 }
 
+
 #define PS_WRITEVAL(ps, data) PS_WriteBytes((ps), (data), sizeof(*(data)))
-#define PS_LIST(i, ps, data, length) for (uint32_t i = 0, length_ = PS_WriteLen((ps), (length), ((void**)data), sizeof **(data)); i < length_; ++i) 
+#define PS_LIST(i, ps, data, length) for (uint32_t i = 0, *x, length_ = PS_WriteLen((ps), (length), ((void**)data), sizeof **(data), &x); i < length_ ? 1 : (free(x), 0); ++i) 
 #define PS_WRITEPTR(ps, ptr, size) PS_WritePointer((ps), ((void**)ptr), (size))
 #define PS_WRITESTR(ps, str) PS_WriteString((ps), (str))
 
