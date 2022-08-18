@@ -1,25 +1,15 @@
 #include "Internal.h"
-struct Mutex  typedef Mutex;
-struct Thread typedef Thread;
 
 #ifdef _WIN32
 
-struct Mutex {
-  HANDLE handle;
-};
-
-struct Thread {
-  HANDLE id;
-};
-
 static int MutexInit(Mutex *mutex)
 {
-    HANDLE mutex_handle = CreateMutexA(NULL, FALSE, NULL);
-    if(mutex_handle != NULL) {
-      mutex->handle = mutex_handle;
-      return 1;
-    }
-    return 0;
+  HANDLE mutex_handle = CreateMutexA(NULL, FALSE, NULL);
+  if(mutex_handle != NULL) {
+    mutex->handle = mutex_handle;
+    return 1;
+  }
+  return 0;
 }
 
 static int MutexLock(Mutex *mutex)
@@ -59,14 +49,6 @@ static int ThreadJoin(Thread *thread)
 }
 
 #else // POSIX
-
-struct Mutex {
-  pthread_mutex_t handle;
-};
-
-struct Thread {
-  pthread_t id;
-};
 
 static int MutexInit(Mutex *mutex)
 {
