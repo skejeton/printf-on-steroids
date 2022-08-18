@@ -1,3 +1,4 @@
 -Ilib/enet/include
 -Isrc
 -Ilib
+-Iinc

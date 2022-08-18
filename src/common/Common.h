@@ -193,18 +193,4 @@ LogEntryDeinit(LogEntry *entry) {
   ConvLogEntry(&ps, entry);
 }
 
-/*
-static inline LogEntry
-LogEntryDecode(size_t data_size, void *data) {
-  size_t hdr_size = sizeof(uint64_t) + sizeof(char *) + sizeof(size_t);
-  LogEntry entry;
-  entry.line = ((uint64_t *)data)[0];
-  entry.file = (char*)data + ((uint64_t *)data)[1];
-  entry.data_size = ((uint64_t *)data)[2];
-  entry.data = (void *)((uint8_t *)data + hdr_size);
-  return entry;
-}
-*/
-
-
 #endif
