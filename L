@@ -2,6 +2,8 @@
 #-*- sh -*-
 
 # some constants #
+CC=clang
+CXX=clang++
 OUTPUT_NAME=bin/printf2
 LIBRARIES="-lc -lm bin/libenet.a -Wl,-rpath,\$ORIGIN"
 FLAGS="-fsanitize=address -g"
@@ -33,8 +35,8 @@ target_build_depend() {
 target_build() {
   mkdir -p bin
   target_build_depend
-  c++ src/server/Main.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
-  cc src/client/Main.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
+  $CC src/server/Main.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
+  $CXX src/client/Main.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
 }
 
 target_run() {
@@ -43,7 +45,7 @@ target_run() {
 }
 
 target_test() {
-  cc test/$1.c -fsanitize=address -Isrc -g && ./a.out
+  $CC test/$1.c -fsanitize=address -Isrc -g && ./a.out
   rm a.out
 }
 

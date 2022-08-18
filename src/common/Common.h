@@ -151,7 +151,7 @@ uint32_t PS_WriteLen(PacketStream *ps, uint32_t *len, void **data, size_t datum_
     *data = malloc(datum_size * length);
   }
 
-  *data_out = ps->mode == PS_MODE_FREE ? *data : NULL;
+  *data_out = (uint32_t*)(ps->mode == PS_MODE_FREE ? *data : NULL);
   return length;
 }
 

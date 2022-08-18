@@ -49,7 +49,7 @@ int main() {
 
   // Free
   {
-    PacketStream ps = PS_BeginFree(origin);
+    PacketStream ps = PS_BeginFree();
     ConvTest(&ps, &test_out);
   }
 

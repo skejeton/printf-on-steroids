@@ -1,3 +1,7 @@
+CC=clang
+CXX=clang++
+AR=llvm-ar
+
 ./bin/libexternal.a:
 	$(CC) -c lib/enet/*.c -Ilib/enet/include
 	$(AR) rcs bin/libenet.a *.o
