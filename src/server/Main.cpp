@@ -148,6 +148,15 @@ void HandleSignal(int signal) {
   exit(0);
 }
 
+void SetImGuiRounding(float rounding) {
+  ImGui::GetStyle().TabRounding = rounding;
+  ImGui::GetStyle().ChildRounding = rounding;
+  ImGui::GetStyle().FrameRounding = rounding;
+  ImGui::GetStyle().GrabRounding = rounding-1;
+  ImGui::GetStyle().ScrollbarRounding = rounding;
+  ImGui::GetStyle().PopupRounding = rounding;
+}
+
 void HandleInit(void) {
   // setup sokol-gfx, sokol-time and sokol-imgui
   sg_desc desc = { };
@@ -160,6 +169,7 @@ void HandleInit(void) {
   auto &io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
   MAIN_FONT = io.Fonts->AddFontFromFileTTF("data/Roboto.ttf", 16);
+  SetImGuiRounding(4);
 
   unsigned char* font_pixels;
   int font_width, font_height;
@@ -271,7 +281,7 @@ void HandleFrame(void) {
       TEXT_FILTER.Draw("Filter (inc,-exc).", ImGui::GetWindowSize().x/2);
       ImGui::SameLine();
       ImGui::SetNextItemWidth(ImGui::GetWindowSize().x/4);
-      ImGui::ListBox("Group by", &group_by, WAYS_TO_GROUP, 2);
+      ImGui::Combo("Group by", &group_by, WAYS_TO_GROUP, 2);
       ImGui::Separator();
       ImGui::BeginChild("Scroller", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
         DisplayLogList(&GLOBAL_SERVER.logs, &TEXT_FILTER);
