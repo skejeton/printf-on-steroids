@@ -1,4 +1,4 @@
-#include <common/Common.h>
+#include <common/LogEntry.h>
 #include <ctype.h>
 
 void DumpLogEntry(LogEntry *e) {

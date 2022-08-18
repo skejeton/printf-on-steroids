@@ -4,9 +4,8 @@ int main() {
   P2_Init();
 
 #if 0
-  Core_OutputLog("Oh and also, the logs preserve across runs.");
+  P2_Print("Oh and also, the logs preserve across runs.");
 #else
-
   P2_Print("Printf2 (Printf on steroids) **Now with faster output**.", "test.c");
   P2_Print("This is a library/GUI package that enchances printf debugging.", "test.c");
   P2_Print("The main drawback of printf is that the data is output into the console.", "file2.c");
