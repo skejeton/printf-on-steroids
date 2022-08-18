@@ -2,17 +2,14 @@
 #include "Thread.c"
 #include "Core.c"
 
-void P2_Printv_(int line, const char *filename, const char *fmt, va_list va)
-{
-  Core_OutputLog((LogEntry){.line=__LINE__,.file=__FILE__,.data=(fmt)});
-}
-
 void P2_Print_(int line, const char *filename, const char *fmt, ...)
 {
   va_list va;
   va_start(va, fmt);
-  P2_Printv_(line, filename, fmt, va);
+  char data[4096];
+  vsnprintf(data, 4096, fmt, va);
   va_end(va);
+  Core_OutputLog((LogEntry){.line=line,.file=(char*)filename,.data=data});
 }
 
 void P2_Init()
