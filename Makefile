@@ -5,7 +5,7 @@
 
 ./bin/libserver.a:
 	$(CC) lib/imgui/*.cpp -c
-	$(CXX) -I. server/SokolImpl.cpp -c
+	$(CXX) -Isrc -Ilib ./src/server/SokolImpl.cpp -c
 	$(AR) rcs bin/libserver.a *.o
 	rm *.o
 

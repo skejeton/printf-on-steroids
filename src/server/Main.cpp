@@ -1,4 +1,3 @@
-
 #include <common/Common.h>
 #include <enet/enet.h>
 #include <signal.h>

@@ -1,4 +1,4 @@
-#include "include/Log.h"
+#include <common/Common.h>
 #include <ctype.h>
 
 void DumpBinary(void *binary, size_t size) {
