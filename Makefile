@@ -1,14 +1,14 @@
 CC=clang
 CXX=clang++
-AR=llvm-ar
+AR=ar
 
-./bin/libexternal.a:
+./bin/libenet.a:
 	$(CC) -c lib/enet/*.c -Ilib/enet/include
 	$(AR) rcs bin/libenet.a *.o
 	rm *.o
 
 ./bin/libserver.a:
-	$(CC) lib/imgui/*.cpp -c
+	$(CXX) lib/imgui/*.cpp -c
 	$(CXX) -Isrc -Ilib ./src/server/SokolImpl.cpp -c
 	$(AR) rcs bin/libserver.a *.o
 	rm *.o

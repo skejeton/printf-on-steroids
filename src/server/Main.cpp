@@ -382,12 +382,12 @@ void HandleFrame(void) {
         ImGui::Combo("Group by", &group_by, WAYS_TO_GROUP, 2);
         ImGui::TableNextColumn();
         ImGui::Checkbox("Monitor", &is_monitor);
+        if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 1.0) {
+          ImGui::SetTooltip("Shows latest logs from their group.");
+        }
         ImGui::TableNextColumn();
         if (ImGui::Button("Clear")) {
           LogList_ClearAssumingPS(&GLOBAL_SERVER.logs);
-        }
-        if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 1.0) {
-          ImGui::SetTooltip("Shows latest logs from their group.");
         }
         ImGui::EndTable();
       }

@@ -35,8 +35,8 @@ target_build_depend() {
 target_build() {
   mkdir -p bin
   target_build_depend
-  $CC src/server/Main.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
-  $CXX src/client/Main.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
+  $CXX src/server/Main.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
+  $CC src/client/Main.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
 }
 
 target_run() {
@@ -45,7 +45,7 @@ target_run() {
 }
 
 target_test() {
-  $CC test/$1.c -fsanitize=address -Isrc -g && ./a.out
+  $CXX test/$1.c -fsanitize=address -Isrc -g && ./a.out
   rm a.out
 }
 
