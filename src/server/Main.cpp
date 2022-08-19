@@ -4,6 +4,19 @@
 #include <signal.h>
 #include <string.h>
 
+typedef size_t Handle;
+typedef Handle BiHandle; 
+
+#define SIZET_LAST_BIT ((size_t)1 << (sizeof(size_t)*(size_t)8-(size_t)1))
+
+#define HANDLE_INVALID (SIZET_LAST_BIT|(SIZET_LAST_BIT-(size_t)1))
+// Sets the binary handle value to "Right".
+#define BH_SET(h) ((h)|SIZET_LAST_BIT)
+// Returns nonzero if the binary handle is "Right".
+#define BH_RIGHT(h) ((h)&SIZET_LAST_BIT)
+// Returns the value of binary handle without the Right/Left markings.
+#define BH_GET(h) ((h) & (SIZET_LAST_BIT-1))
+
 char *CopyTextMalloc(const char *text) {
   const size_t SIZE = strlen(text) + 1;
   char *data = (char*)malloc(SIZE);
@@ -11,64 +24,110 @@ char *CopyTextMalloc(const char *text) {
   return data;
 }
 
-struct Category {
-  const char *name;
-  size_t *handles;
-  size_t handles_len;
+enum LogGroupKeyType {
+  LGKT_NIL,
+  LGTK_INT,
+  LGTK_STR
 };
 
-struct CategorizedList {
-  Category *categories;
-  size_t categories_len;
-
-  void Append(const char *category, size_t handle);
-  void Deinit();
+struct LogGroupKey {
+  LogGroupKeyType type;
+  union {
+    const char *string;
+    int integer;
+  };
 };
 
-void CategorizedList::Append(const char *category, size_t handle) {
-  // Find category.
-  Category *cat = NULL;
-  for (int i = 0; i < this->categories_len; ++i) {
-    if (strcmp(this->categories[i].name, category) == 0) {
-      cat = &this->categories[i];
-    }
-  }
-
-  // If not found, create.
-  if (cat == NULL) {
-    if (this->categories_len % 32 == 0) {
-      this->categories = (Category*)realloc(this->categories, sizeof(Category) * (this->categories_len + 32));
-    }
-    cat = &this->categories[this->categories_len++];
-    *cat = {}; 
-    cat->name = category;
-  }
-
-  // Add entry to the category.
-  if (cat->handles_len % 32 == 0) {
-    cat->handles = (size_t*)realloc(cat->handles, sizeof(size_t) * (cat->handles_len + 32));
-  }
-  cat->handles[cat->handles_len++] = handle;
+static LogGroupKey KeyInt(int i) {
+  LogGroupKey key = {LGTK_INT};
+  key.integer = i;
+  return key;
 }
 
-void CategorizedList::Deinit() {
-  for (int i = 0; i < this->categories_len; ++i) {
-    free(this->categories[i].handles);
+static LogGroupKey KeyStr(const char *s) {
+  LogGroupKey key = {LGTK_STR};
+  key.string = s;
+  return key;
+}
+
+bool KeyEqual(LogGroupKey a, LogGroupKey b) {
+  if (a.type != b.type) {
+    return false;
   }
-  free(this->categories);
+
+  switch (a.type) {
+    case LGKT_NIL:
+      LOG_INFO("KeyEqual for nil keys, something's wrong.");
+      return false;
+    case LGTK_INT:
+      return a.integer == b.integer;
+    case LGTK_STR:
+      return strcmp(a.string, b.string) == 0;
+  }
+  LOG_ERROR("Unreachable.");
+}
+
+struct LogGroup {
+  LogGroupKey key;
+  size_t handles_len;
+  BiHandle *handles;
+};
+
+void AppendHandle(LogGroup *group, size_t handle) {
+  if (group->handles_len % 32 == 0) {
+    group->handles = (size_t*)realloc(group->handles, sizeof(size_t) * (group->handles_len + 32));
+  }
+
+  group->handles[group->handles_len++] = handle;
 }
 
 struct LogList {
+  LogGroup root;
+  LogGroup *groups;
   LogEntry *logs;
   size_t logs_len;
 
+  static LogList Init();
   void AppendLog(LogEntry entry);
 };
 
-struct Server {
-  LogList logs;
-  ENetHost *host;
-};
+#define LOGLIST_GROUPMAX 1024
+
+Handle AllocateLogGroup(LogList *list) {
+  for (int i = 0; i < LOGLIST_GROUPMAX; ++i) {
+    if (list->groups[i].key.type == LGKT_NIL) {
+      // Zero it out, just in case.
+      list->groups[i] = {};
+      return i;
+    }
+  }
+
+  LOG_ERROR("Too many log groups. What can I say...");
+  return HANDLE_INVALID;
+}
+
+static LogGroup *AcquireGroup(LogList *list, LogGroup *group, LogGroupKey key) {
+  for (size_t i = 0; i < group->handles_len; ++i) {
+    // NOTE(skejeton): Here we are assuming all nodes have Left prefix.
+    LogGroup *subgroup = &list->groups[group->handles[i]];
+    if (KeyEqual(key, subgroup->key)) {
+      return subgroup;
+    }
+  }
+
+  Handle handle = AllocateLogGroup(list);
+  AppendHandle(group, handle);
+  list->groups[handle].key = key;
+  return &list->groups[handle];
+}
+
+
+LogList LogList::Init() {
+  LogList l = {};
+  l.groups = (LogGroup*)calloc(LOGLIST_GROUPMAX, sizeof(LogGroup));
+  LOG_INFO("Allocating log list: %p", l.groups);
+  return l;
+}
 
 void LogList::AppendLog(LogEntry entry) {
   if (this->logs_len % 32 == 0) {
@@ -76,12 +135,31 @@ void LogList::AppendLog(LogEntry entry) {
   }
 
   this->logs[this->logs_len++] = entry;
+
+  // Populate groups
+  {
+    LogGroup *line = AcquireGroup(this, AcquireGroup(this, &this->root, KeyStr(entry.file)), KeyInt(entry.line));
+    AppendHandle(line, BH_SET(this->logs_len-1));
+  }
 }
+
+struct Server {
+  LogList logs;
+  ENetHost *host;
+};
 
 /* LogList_ClearAssumingPS(log_list)
 // Clears log list assuming the data was allocated by PacketStream.
 */
 void LogList_ClearAssumingPS(LogList *list) {
+  free(list->root.handles);
+  list->root = {};
+  for (size_t i = 0; i < LOGLIST_GROUPMAX; ++i) {
+    if (list->groups[i].key.type != LGKT_NIL) {
+      free(list->groups[i].handles);
+    }
+    list->groups[i] = {};
+  }
   for (size_t i = 0; i < list->logs_len; ++i) {
     LogEntryDeinit(&list->logs[i]);
   }
@@ -115,6 +193,7 @@ Server HostServer(int port) {
   address.host = ENET_HOST_ANY;
   address.port = port;
 
+
   enet_address_set_host(&address, "127.0.0.1");
   LOG_INFO("Hosting server.");
   ENetHost *server = enet_host_create(&address, DEFAULT_CLIENT_CAP, DEFAULT_CHAN_CAP, 0, 0);
@@ -122,7 +201,11 @@ Server HostServer(int port) {
     LOG_ERROR("Failed to start server.");
   }
 
-  return (Server){.host = server};
+  Server serv = {};
+  serv.host = server;
+  serv.logs = LogList::Init();
+
+  return serv;
 }
 
 void StopServer(Server *server) {
@@ -301,65 +384,56 @@ bool PassLogEntryFilter(ImGuiTextFilter *filter, LogEntry *entry) {
 }
 
 void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
-  ImGui::TableNextRow();
-  ImGui::TableNextColumn();
+  ImGui::PushStyleColor(ImGuiCol_Text, 0x99FFFFFF);
   if (show_file) {
     ImGui::Text("%s:%zu", entry->file, entry->line);
   } else {
     ImGui::Text("%zu", entry->line);
   }
-  ImGui::TableNextColumn();
+  ImGui::PopStyleColor(1);
+  ImGui::SameLine();
   ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
   ImGui::TextWrapped("%s", entry->data);
   ImGui::PopStyleColor(1);
 } 
 
+void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *filter) {
+  bool wrap_in_tree_node = group->key.type == LGTK_STR && group_by == 1;
+
+  if (wrap_in_tree_node)
+    if (!ImGui::TreeNode(group->key.string)) {
+      return;
+    }
+
+  BiHandle last_log = 0;
+
+  for (size_t i = 0; i < group->handles_len; ++i) {
+    BiHandle handle = group->handles[i];
+    if (BH_RIGHT(handle)) {
+      last_log = handle;
+      if (PassLogEntryFilter(filter, &list->logs[BH_GET(handle)])) {
+        if (!is_monitor) {
+          DisplayLogEntry(&list->logs[BH_GET(handle)], i, false);
+        }
+      }
+    } else {
+      DisplayLogListRecursive(list, &list->groups[BH_GET(handle)], filter);
+    }
+  }
+
+  if (is_monitor && BH_RIGHT(last_log)) {
+    assert(is_monitor);
+    if (PassLogEntryFilter(filter, &list->logs[BH_GET(last_log)])) {
+      DisplayLogEntry(&list->logs[BH_GET(last_log)], 0, false);
+    }
+  }
+
+  if (wrap_in_tree_node)
+    ImGui::TreePop();
+}
+
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
-  // NOTE(skejeton): I wouldn't need this, but BeginTable then assigns 0 for the fit.
-  if (list->logs_len == 0) {
-    return;
-  }
-
-  if (group_by == 1) {
-    // Categorized
-    CategorizedList categorized_list = {};
-    for (int i = 0; i < list->logs_len; ++i) {
-      if (PassLogEntryFilter(filter, &list->logs[i])) {
-        categorized_list.Append(list->logs[i].file, i);
-      }
-    }
-
-    for (int i = 0; i < categorized_list.categories_len; ++i) {
-      Category *category = &categorized_list.categories[i];
-      if (ImGui::TreeNode(category->name)) {
-        ImGui::Indent();
-        if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_RowBg)) {
-          ImGui::TableSetupColumn("##Line", ImGuiTableColumnFlags_WidthFixed, 0.0f);
-          for (int j = 0; j < category->handles_len; ++j) {
-            DisplayLogEntry(&list->logs[category->handles[j]], j, false);
-          }
-          ImGui::EndTable();
-        }
-        ImGui::Unindent();
-        ImGui::TreePop();
-      }
-    }
-
-    categorized_list.Deinit();
-  } else {
-    // Uncategorized
-
-    if (ImGui::BeginTable("Table", 2, ImGuiTableFlags_Resizable|ImGuiTableFlags_RowBg)) {
-      ImGui::TableSetupColumn("##Line", ImGuiTableColumnFlags_WidthFixed, 0.0f);
-      
-      for (int i = 0; i < list->logs_len; ++i) {
-        if (PassLogEntryFilter(filter, &list->logs[i])) {
-          DisplayLogEntry(&list->logs[i], i, true);
-        }
-      }
-      ImGui::EndTable();
-    }
-  }
+  DisplayLogListRecursive(list, &list->root, filter);
 }
 
 void HandleFrame(void) {
@@ -393,6 +467,10 @@ void HandleFrame(void) {
       }
 
       ImGui::BeginChild("Scroller", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()-40.0)
+          ImGui::SetScrollY(ImGui::GetScrollMaxY());
+     
+
         DisplayLogList(&GLOBAL_SERVER.logs, &TEXT_FILTER);
       ImGui::EndChild();
     ImGui::End();

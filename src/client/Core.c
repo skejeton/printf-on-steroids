@@ -54,7 +54,6 @@ static Client GLOBAL_CLIENT;
 static Mutex MUTEX;
 _Atomic(int) CORE_THREAD_RUNNING = 1;
 Thread CORE_THREAD_ID;
-unsigned short start_seq_number = 0;
 
 // TODO: Reliably send packets by recieving acknowledgments.
 static void* CoreThread(void *param) {
@@ -68,7 +67,6 @@ static void* CoreThread(void *param) {
     LOG_INFO("Data len is %zu.", GLOBAL_CLIENT.data_len);
     running = running || GLOBAL_CLIENT.data_len > 0;
     int npackets = 0;
-    start_seq_number = GLOBAL_CLIENT.peer->channels[0].outgoingReliableSequenceNumber;
 
     if (GLOBAL_CLIENT.data_len > 0) {
       size_t i = 0;
