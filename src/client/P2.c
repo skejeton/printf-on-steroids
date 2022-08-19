@@ -1,6 +1,9 @@
 #include "Internal.h"
 #include "Thread.c"
 #include "Core.c"
+#include "Printf.c"
+#include "common/Common.h"
+#include "common/LogEntry.h"
 
 void P2_Print_(int line, const char *filename, const char *fmt, ...)
 {
@@ -9,6 +12,11 @@ void P2_Print_(int line, const char *filename, const char *fmt, ...)
   char data[4096];
   vsnprintf(data, 4096, fmt, va);
   va_end(va);
+
+  LogItem items[64];
+  size_t items_len;
+
+
   Core_OutputLog((LogEntry){.line=line,.file=(char*)filename,.data=data});
 }
 

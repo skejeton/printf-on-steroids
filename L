@@ -45,7 +45,7 @@ target_run() {
 }
 
 target_test() {
-  $CXX test/$1.c -fsanitize=address -Isrc -g && ./a.out
+  $CC $INCLUDES -Iinc test/$1.c -fsanitize=address -Isrc -g && ./a.out
   rm a.out
 }
 

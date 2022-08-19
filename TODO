@@ -1,0 +1,1 @@
+Logs are incorrectlly grouped with "None". They still appear as sorted by their lines not by their flat time.

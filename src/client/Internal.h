@@ -45,4 +45,6 @@ static int MutexDestroy(Mutex *mutex);
 
 static int ThreadCreate(Thread *thread, void *(*func)(void*));
 static int ThreadJoin(Thread *thread);
+static int FormatItems(LogItem *items, size_t items_max, size_t *out_nwritten, const char *fmt, va_list va);
+
 #endif

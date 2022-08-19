@@ -3,6 +3,25 @@
 
 #include "Common.h"
 
+
+enum LogItemType {
+  LIT_NIL,
+  LIT_STR,
+  LIT_CHR,
+  LIT_INT,
+}
+typedef LogItemType;
+
+struct LogItem typedef LogItem;
+struct LogItem {
+  LogItemType type;
+  union {
+    char chr_;
+    char *str_;
+    int int_;
+  };
+};
+
 struct LogEntry typedef LogEntry;
 struct LogEntry {
   uint64_t line;

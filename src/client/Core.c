@@ -123,7 +123,7 @@ static void* CoreThread(void *param) {
   return NULL;
 }
 
-void Core_OutputLog(LogEntry entry) {
+static void Core_OutputLog(LogEntry entry) {
   MutexLock(&MUTEX);
     const size_t LIMIT = (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len);
     void *origin = LogEntryEncode(entry);
