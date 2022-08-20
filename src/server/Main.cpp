@@ -445,7 +445,7 @@ static void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
   ImGui::PopStyleColor(1);
 } 
 
-void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *filter) {
+void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *filter, int depth) {
   bool wrap_in_tree_node = group->key.type == LGTK_STR && group_by == 1;
 
   if (wrap_in_tree_node)
@@ -455,17 +455,38 @@ void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *fi
 
   BiHandle last_log = 0;
 
-  for (size_t i = 0; i < group->handles_len; ++i) {
-    BiHandle handle = group->handles[i];
-    if (BH_RIGHT(handle)) {
-      last_log = handle;
-      if (PassLogEntryFilter(filter, &list->logs[BH_GET(handle)])) {
-        if (!is_monitor) {
-          DisplayLogEntry(&list->logs[BH_GET(handle)], i, false);
-        }
+  // NOTE(Skejeton): This is necessary to display logs in chronological order if the monitor mode is disabled.
+  if (group->key.type == LGTK_STR && depth == 1 && is_monitor == false) {
+    if (group->handles_len > 0) {
+      if (BH_RIGHT(group->handles[0])) {
+        LOG_ERROR("The first handle of a string node is a leaf. Looks like the temporary hack isn't needed anymore or needs fixing.");
       }
-    } else {
-      DisplayLogListRecursive(list, &list->groups[BH_GET(handle)], filter);
+      // NOTE(Skejeton): Group with the line number.
+      LogGroup *number_group = &list->groups[group->handles[0]];
+      if (number_group->handles_len == 0) {
+        LOG_ERROR("The number log has no items. Wack. Looks like the temporary hack isn't needed anymore or needs fixing.");
+      }
+
+      Handle log_handle = BH_GET(number_group->handles[0]);
+      
+      // owo what's this
+      for (Handle h = log_handle; h < list->logs_len && strcmp(list->logs[h].file, group->key.string) == 0; h++) {
+        DisplayLogEntry(&list->logs[h], h, false);
+      }
+    } 
+  } else {
+    for (size_t i = 0; i < group->handles_len; ++i) {
+      BiHandle handle = group->handles[i];
+      if (BH_RIGHT(handle)) {
+        last_log = handle;
+        if (PassLogEntryFilter(filter, &list->logs[BH_GET(handle)])) {
+          if (!is_monitor) {
+            DisplayLogEntry(&list->logs[BH_GET(handle)], i, false);
+          }
+        }
+      } else {
+        DisplayLogListRecursive(list, &list->groups[BH_GET(handle)], filter, depth+1);
+      }
     }
   }
 
@@ -481,7 +502,7 @@ void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *fi
 }
 
 void DisplayLogList(LogList *list, ImGuiTextFilter *filter) {
-  DisplayLogListRecursive(list, &list->root, filter);
+  DisplayLogListRecursive(list, &list->root, filter, 0);
 }
 
 void HandleFrame(void) {
