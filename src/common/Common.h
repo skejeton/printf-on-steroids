@@ -72,6 +72,7 @@ typedef LogItemType;
 struct LogItem typedef LogItem;
 struct LogItem {
   LogItemType type;
+  uint32_t start, size;
   union {
     char chr_;
     char *str_;
@@ -84,6 +85,8 @@ struct LogEntry {
   uint64_t line;
   char    *file;
   char    *data;
+  uint32_t items_len;
+  LogItem *items;
 };
 
 void * LogEntryEncode(LogEntry entry);
@@ -94,5 +97,7 @@ LogEntry LogEntryDecode(void *origin);
 // Deinitializes data within LogEntry,
 // This assumes the log entry was allocated by PacketStream.
 void LogEntryDeinit(LogEntry *entry);
+void LogItemDump(LogItem item);
+void LogEntryDump(LogEntry *e);
 
 #endif

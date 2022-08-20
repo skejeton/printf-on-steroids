@@ -50,7 +50,7 @@ int ThreadJoin(Thread *thread);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Printf.c
-int FormatItems(LogItem *items, size_t items_max, size_t *out_nwritten, const char *fmt, va_list va);
+int FormatItems(LogItem *items, size_t items_max, uint32_t *out_nwritten, const char *fmt, va_list va);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Core.c

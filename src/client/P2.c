@@ -2,13 +2,17 @@
 #include "common/Common.h"
 
 void P2_Print_(int line, const char *filename, const char *fmt, ...) {
+  LogItem item_buffer[64];
+  LogEntry entry = {.line=line,.file=(char*)filename,.data=(char*)fmt};
+  entry.items = item_buffer;
+
   va_list va;
   va_start(va, fmt);
-  char data[4096];
-  vsnprintf(data, 4096, fmt, va);
+  FormatItems(entry.items, 64, &entry.items_len, fmt, va);
   va_end(va);
 
-  Core_OutputLog((LogEntry){.line=line,.file=(char*)filename,.data=data});
+  LogEntryDump(&entry);
+  Core_OutputLog(entry);
 }
 
 void P2_Init() {

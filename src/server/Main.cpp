@@ -176,10 +176,12 @@ void HandleEvents(Server *server) {
       case ENET_EVENT_TYPE_DISCONNECT:
         LOG_INFO("Client disconnected.");
         break;
-      case ENET_EVENT_TYPE_RECEIVE:
-        server->logs.AppendLog(LogEntryDecode(event.packet->data));
+      case ENET_EVENT_TYPE_RECEIVE: {
+        LogEntry entry = LogEntryDecode(event.packet->data);
+        LogEntryDump(&entry);
+        server->logs.AppendLog(entry);
         enet_packet_destroy(event.packet);
-        break;
+      } break;
       case ENET_EVENT_TYPE_NONE:
         LOG_INFO("None event.");
         break;
@@ -382,17 +384,64 @@ bool PassLogEntryFilter(ImGuiTextFilter *filter, LogEntry *entry) {
   return filter->PassFilter(entry->data) || filter->PassFilter(entry->file);
 }
 
-void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
-  ImGui::PushStyleColor(ImGuiCol_Text, 0x99FFFFFF);
-  if (show_file) {
-    ImGui::Text("%s:%zu", entry->file, entry->line);
-  } else {
-    ImGui::Text("%zu", entry->line);
+/* DisplayLogEntryHypertext()
+// Displays the hypertext content of a LogEntry into ImGui, with formatted values like ints.
+*/     
+static void DisplayLogEntryHypertext(LogEntry *entry) {
+  size_t string_offset = 0;
+  size_t data_length = strlen(entry->data);
+
+  // Disable item spacing between format elements.
+  ImVec2 previous_item_spacing = ImGui::GetStyle().ItemSpacing;
+  ImGui::GetStyle().ItemSpacing = {0, 0};
+
+  // Iterates over each format parameter, renders all the text and values in between. 
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(20, 10));
+  for (int i = 0; i < entry->items_len; ++i) {
+    LogItem *item = &entry->items[i];
+
+    // Disable SameLine call on first element so they are interleaved within.
+    ImGui::Text("%.*s", (int)(item->start-string_offset), entry->data+string_offset);
+    ImGui::SameLine();
+    switch (item->type) {
+      case LIT_INT:
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFFFAAAA);
+          ImGui::Text("%d", item->int_);
+        ImGui::PopStyleColor(1);
+        break;
+      case LIT_CHR:
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFAAAAFF);
+          ImGui::Text("%c", item->chr_);
+        ImGui::PopStyleColor(1);
+        break;
+      case LIT_STR:
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFAAFFFF);
+          ImGui::Text("%s", item->str_);
+        ImGui::PopStyleColor(1);
+        break;
+      case LIT_NIL:
+        LOG_INFO("Rendering LIT_NIL. WTF?");
+        break;
+    }
+    ImGui::SameLine();
+    string_offset = item->start + item->size;
   }
+  ImGui::PopStyleVar(1);
+  ImGui::Text("%s", entry->data+string_offset);
+  ImGui::GetStyle().ItemSpacing = previous_item_spacing;
+}
+
+static void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
+  ImGui::PushStyleColor(ImGuiCol_Text, 0x99FFFFFF);
+    if (show_file) {
+      ImGui::Text("%s:%zu", entry->file, entry->line);
+    } else {
+      ImGui::Text("%zu", entry->line);
+    }
   ImGui::PopStyleColor(1);
   ImGui::SameLine();
   ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
-  ImGui::TextWrapped("%s", entry->data);
+    DisplayLogEntryHypertext(entry);
   ImGui::PopStyleColor(1);
 } 
 
