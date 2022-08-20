@@ -1,8 +1,7 @@
 // Bare bones implementation of printf
-#include <common/LogEntry.h>
 #include <stdarg.h>
-#include "Internal.h"
 #include "common/Common.h"
+#include "Internal.h"
 
 static void HandleFormatArgument(LogItem *destination, const char **format, va_list va) {
   const char *fmt = *format;
@@ -38,7 +37,7 @@ static void HandleFormatArgument(LogItem *destination, const char **format, va_l
 }
 
 // Returns negative value on error. 
-static int FormatItems(LogItem *items, size_t items_max, size_t *out_nwritten, const char *fmt, va_list va) {
+int FormatItems(LogItem *items, size_t items_max, size_t *out_nwritten, const char *fmt, va_list va) {
   int nprocessed = 0;
   int status = 0;
 

@@ -1,4 +1,4 @@
-#include <common/Common.h>
+#include <common/Common.c>
 
 struct Test typedef Test;
 struct Test {

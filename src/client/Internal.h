@@ -15,7 +15,6 @@
 #include <P2.h>
 #include <enet/enet.h>
 #include <common/Common.h>
-#include <common/LogEntry.h>
 
 #ifdef _WIN32
 struct Mutex {
@@ -35,16 +34,31 @@ struct Thread {
 };
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+// Thread.c
+
 struct Mutex typedef Mutex;
 struct Thread typedef Thread;
 
-static int MutexInit(Mutex *mutex);
-static int MutexLock(Mutex *mutex);
-static int MutexUnlock(Mutex *mutex);
-static int MutexDestroy(Mutex *mutex);
+int MutexInit(Mutex *mutex);
+int MutexLock(Mutex *mutex);
+int MutexUnlock(Mutex *mutex);
+int MutexDestroy(Mutex *mutex);
 
-static int ThreadCreate(Thread *thread, void *(*func)(void*));
-static int ThreadJoin(Thread *thread);
-static int FormatItems(LogItem *items, size_t items_max, size_t *out_nwritten, const char *fmt, va_list va);
+int ThreadCreate(Thread *thread, void *(*func)(void*));
+int ThreadJoin(Thread *thread);
+
+////////////////////////////////////////////////////////////////////////////////
+// Printf.c
+int FormatItems(LogItem *items, size_t items_max, size_t *out_nwritten, const char *fmt, va_list va);
+
+////////////////////////////////////////////////////////////////////////////////
+// Core.c
+
+#include "Internal.h"
+
+void Core_Init();
+void Core_Deinit();
+void Core_OutputLog(LogEntry entry);
 
 #endif

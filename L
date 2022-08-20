@@ -35,8 +35,8 @@ target_build_depend() {
 target_build() {
   mkdir -p bin
   target_build_depend
-  $CXX src/server/Main.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
-  $CC src/client/Main.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
+  $CXX src/ServerMain.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
+  $CC src/ClientMain.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
 }
 
 target_run() {

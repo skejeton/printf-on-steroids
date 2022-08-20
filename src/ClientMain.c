@@ -1,4 +1,9 @@
-#include "P2.c"
+#include "client/P2.c"
+#include "client/Printf.c"
+#include "client/Thread.c"
+#include "client/Core.c"
+#include "common/LogEntry.c"
+#include "common/Common.c"
 
 int main() {
   P2_Init();
@@ -24,6 +29,6 @@ int main() {
     sleep(1);
   }
 
-  P2_Terminate();
+  P2_Deinit();
   return 0;
 }

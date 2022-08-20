@@ -1,5 +1,4 @@
-#include <common/Common.h>
-#include <common/LogEntry.h>
+#include "common/Common.h"
 #include <enet/enet.h>
 #include <signal.h>
 #include <string.h>

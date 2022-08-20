@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 void P2_Init();
-void P2_Terminate();
+void P2_Deinit();
 
 void P2_Print_(int line, const char *file, const char *fmt, ...);
 #define P2_Print(fmt, ...) P2_Print_(__LINE__, __FILE__, fmt, __VA_ARGS__)

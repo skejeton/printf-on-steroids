@@ -1,5 +1,5 @@
-#include <common/LogEntry.h>
-#include <ctype.h>
+#include "common/LogEntry.c"
+#include "common/Common.c"
 
 void DumpLogEntry(LogEntry *e) {
   LOG_INFO("%s:%zu\t%s", e->file, e->line, e->data);
@@ -25,4 +25,7 @@ int main() {
 
   LOG_INFO("Unpacked entry is:");
   DumpLogEntry(&entry);
+
+  free(origin);
+  LogEntryDeinit(&e);
 }

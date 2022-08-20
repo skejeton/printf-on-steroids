@@ -1,33 +1,4 @@
-#ifndef H_LOGENTRY
-#define H_LOGENTRY
-
 #include "Common.h"
-
-
-enum LogItemType {
-  LIT_NIL,
-  LIT_STR,
-  LIT_CHR,
-  LIT_INT,
-}
-typedef LogItemType;
-
-struct LogItem typedef LogItem;
-struct LogItem {
-  LogItemType type;
-  union {
-    char chr_;
-    char *str_;
-    int int_;
-  };
-};
-
-struct LogEntry typedef LogEntry;
-struct LogEntry {
-  uint64_t line;
-  char    *file;
-  char    *data;
-};
 
 static void ConvLogEntry(PacketStream *ps, LogEntry *e) {
   PS_WRITEVAL(ps, &e->line);
@@ -35,10 +6,7 @@ static void ConvLogEntry(PacketStream *ps, LogEntry *e) {
   PS_WRITESTR(ps, &e->data);
 }
 
-// For now implementation lives here
-
-static inline void *
-LogEntryEncode(LogEntry entry) {
+void * LogEntryEncode(LogEntry entry) {
   PacketStream ps = PS_BeginWrite();
   ConvLogEntry(&ps, &entry);
   void *origin = PS_FinalizeWrite(&ps);
@@ -46,8 +14,7 @@ LogEntryEncode(LogEntry entry) {
   return origin;
 }
 
-static inline LogEntry
-LogEntryDecode(void *origin) {
+LogEntry LogEntryDecode(void *origin) {
   LOG_INFO("Decoding package:");
 
   PacketStream ps = PS_BeginRead(origin);
@@ -58,9 +25,7 @@ LogEntryDecode(void *origin) {
 // LogEntryDeinit(entry)
 // Deinitializes data within LogEntry,
 // This assumes the log entry was allocated by PacketStream.
-static inline void
-LogEntryDeinit(LogEntry *entry) {
+void LogEntryDeinit(LogEntry *entry) {
   PacketStream ps = PS_BeginFree();
   ConvLogEntry(&ps, entry);
 }
-#endif
