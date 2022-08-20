@@ -24,8 +24,8 @@ set md=-Wl,-nodefaultlib:libcmt -D_DLL -lmsvcrt -Xlinker /NODEFAULTLIB:MSVCRTD
 set libs=-lbin\imgui.lib
 
 set enet_flags=-Ilib/enet/include -lbin\enet.lib -lWinmm -lWs2_32
-set server_in=src\server\Main.cpp src\server\SokolImpl.cpp
-set client_in=src\client\Main.c
+set server_in=src\ServerMain.cpp src\server\SokolImpl.cpp
+set client_in=src\ClientMain.c
 
 clang %server_in% -oserver.exe -g -Isrc -Ilib %enet_flags% %libs% %md%
 clang %client_in% -oclient.exe -g -Isrc -Ilib -Iinc %enet_flags% %md%

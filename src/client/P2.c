@@ -8,7 +8,7 @@ void P2_Print_(int line, const char *filename, const char *fmt, ...) {
 
   va_list va;
   va_start(va, fmt);
-  FormatItems(entry.items, 64, &entry.items_len, fmt, va);
+  FormatItems(entry.items, 64, &entry.items_len, fmt, &va);
   va_end(va);
 
   LogEntryDump(&entry);
