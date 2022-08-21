@@ -81,9 +81,7 @@ case `getarg 0` in
     cp data/Roboto.ttf package/GUI/data
     mkdir -p package/Library
     cp bin/libprintf2.a package/Library
-    mkdir -p package/Library/include
-    mkdir -p package/Library/include/P2
-    cp inc/P2.h package/Library/include/P2
+    cp inc/P2.h package/Library
   ;;
   test)
     target_test `getarg 1`
