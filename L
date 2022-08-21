@@ -1,27 +1,11 @@
 #!/bin/sh
 #-*- sh -*-
 
-# some constants #
-AR=ar
-CC=clang
-CXX=clang++
-LD=ld
-OBJCOPY=objcopy
-OUTPUT_NAME=bin/printf2
-OUTPUT_LIBRARY=bin/libprintf2.a
-LIBRARIES="-lc bin/libenet.a"
-# FLAGS="-fsanitize=address -g"
-FLAGS="-O3"
-INCLUDES="-Ilib/enet/include -Isrc -Ilib -Iinc"
-##################
-
 # internal vars dont touch #
 ARGS=( $@ )
 NARG=0
 PROG_NAME=$0
 ############################
-
-set -e
 
 # $1 offset
 getarg() {
@@ -33,20 +17,8 @@ argv() {
   echo ${R[@]}
 }
 
-target_build_depend() {
-  make all
-}
-
 target_build() {
-  mkdir -p bin
-  target_build_depend
-  $CXX src/ServerMain.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
-  $CC src/ClientMain.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
-  $CC src/ClientLibrary.c $FLAGS $INCLUDES -c
-  $LD -r *.o bin/libenet.a -o Out.o
-  $OBJCOPY --keep-global-symbols=GlobalSymbols.txt Out.o Out.o
-  $AR rcs bin/libprintf2.a Out.o
-  rm Out.o
+  make all
 }
 
 target_run() {
@@ -55,8 +27,8 @@ target_run() {
 }
 
 target_test() {
-  $CC $INCLUDES -Iinc test/$1.c -fsanitize=address -Isrc -g && ./a.out
-  rm a.out
+  make test/$1.test.out && test/$1.test.out
+  rm -f test/$1.test.out
 }
 
 hasargs=1
@@ -73,15 +45,7 @@ done
 
 case `getarg 0` in
   package)
-    target_build
-    mkdir -p package
-    mkdir -p package/GUI
-    cp bin/printf2_server package/GUI/Printf2Monitor
-    mkdir -p package/GUI/data
-    cp data/Roboto.ttf package/GUI/data
-    mkdir -p package/Library
-    cp bin/libprintf2.a package/Library
-    cp inc/P2.h package/Library
+    make package
   ;;
   test)
     target_test `getarg 1`

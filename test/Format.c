@@ -8,7 +8,7 @@ int FormatLikeFn(const char *fmt, ...) {
 
   va_list va;
   va_start(va, fmt);
-  FormatItems(items, 64, &items_len, fmt, va);
+  FormatItems(items, 64, &items_len, fmt, &va);
   va_end(va);
 
   for (size_t i = 0; i < items_len; ++i) {

@@ -505,9 +505,7 @@ void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *fi
           Handle last_handle = handle;
           // Scroll down for the last log in the chain.
           while (log_meta.next != HANDLE_INVALID) {
-            if (PassLogEntryFilter(filter, &list->logs[log_meta.next])) {
-              last_handle = log_meta.next;
-            }
+            last_handle = log_meta.next;
             log_meta = list->meta[log_meta.next];
           }
           log_entry = &list->logs[last_handle];

@@ -35,7 +35,7 @@ PacketStream PS_BeginFree() {
 PacketStream PS_BeginWrite() {
   PacketStream result = {0};
   result.mode = PS_MODE_WRITE;
-  result.origin = (uint8_t*)malloc(PS_BYTECAP);
+  result.origin = NULL;
   // Skip packet size. Will be written to during finalization if write.
   result.data = (uint8_t*)result.origin + sizeof(uint32_t); 
   return result;
@@ -64,11 +64,24 @@ void* PS_FinalizeWrite(PacketStream *ps) {
   return ps->origin;
 }
 
-void* PS_WriteBytes(PacketStream *ps, void *data, size_t nbytes) {
-  const size_t NEW_SIZE = ((uint8_t*)ps->data-(uint8_t*)ps->origin)+nbytes;
-  if (NEW_SIZE >= PS_BYTECAP) {
-    LOG_ERROR("Packet stream is overflowed by %zu bytes. That means I need to dyanmically resize it FFS!", NEW_SIZE-PS_BYTECAP);
+static void PS_ResizeIfNeeded(PacketStream *ps, size_t nbytes) {
+  // Do not resize when we aren't writing to ps->data.
+  if (ps->mode != PS_MODE_WRITE) {
+    return;
   }
+
+  const size_t OFFSET = ((uint8_t*)ps->data-(uint8_t*)ps->origin);
+  const size_t NEW_SIZE = OFFSET+nbytes;
+  if (NEW_SIZE >= ps->cap) {
+    LOG_INFO("Resizing from %zu -> %zu for nbytes %zu", ps->cap, ps->cap * 2 + NEW_SIZE, nbytes);
+    ps->cap = ps->cap * 2 + NEW_SIZE;
+    ps->origin = (uint8_t*)realloc(ps->origin, ps->cap);
+    ps->data = ps->origin + OFFSET;
+  }
+}
+
+void* PS_WriteBytes(PacketStream *ps, void *data, size_t nbytes) {
+  PS_ResizeIfNeeded(ps, nbytes+sizeof(uint32_t));
   
   switch (ps->mode) {
     case PS_MODE_WRITE:
@@ -86,10 +99,10 @@ void* PS_WriteBytes(PacketStream *ps, void *data, size_t nbytes) {
 }
 
 void PS_WritePointer(PacketStream *ps, void **data, size_t nbytes) {
-  const size_t NEW_SIZE = ((uint8_t*)ps->data-(uint8_t*)ps->origin)+nbytes+sizeof(uint32_t);
-  if (NEW_SIZE >= PS_BYTECAP) {
-    LOG_ERROR("Packet stream is overflowed by %zu bytes. That means I need to dyanmically resize it FFS!", NEW_SIZE-PS_BYTECAP);
+  if (ps->mode == PS_MODE_WRITE && *data == NULL) {
+    LOG_ERROR("Managing NULL pointers is not implemented.");
   }
+  PS_ResizeIfNeeded(ps, nbytes+sizeof(uint32_t));
   
   uint32_t *size_ptr = (uint32_t*)ps->data;
   ps->data += sizeof *size_ptr;
@@ -123,5 +136,8 @@ uint32_t PS_WriteLen(PacketStream *ps, uint32_t *len, void **data, size_t datum_
 }
 
 void PS_WriteString(PacketStream *ps, char **str) {
+  if (ps->mode == PS_MODE_WRITE && *str == NULL) {
+    LOG_ERROR("Managing NULL pointers is not implemented.");
+  }
   return PS_WritePointer(ps, (void**)str, ps->mode == PS_MODE_READ ? 0 : strlen(*str)+1);
 }

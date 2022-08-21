@@ -1,8 +1,6 @@
 #ifndef H_COMMON
 #define H_COMMON
 
-#define DISABLE_LOGS
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -13,7 +11,7 @@
 
 #define LOG_ERROR(...) (printf("\x1b[31mLOG_ERROR\x1b[0m: " __VA_ARGS__), printf("\n"), exit(-1))
 
-#ifndef DISABLE_LOGS
+#ifdef DEBUG_LOGS
 #define IFDEBUG(...) (__VA_ARGS__)
 #define LOG_WARN(...) (printf("\x1b[35mLOG_WARN\x1b[0m: " __VA_ARGS__), printf("\n"), exit(-1))
 #define LOG_INFO(...) (printf("\x1b[34mLOG_INFO\x1b[0m: " __VA_ARGS__), printf("\n"))
@@ -36,11 +34,11 @@ enum {
 }
 typedef PacketStreamMode;
 
-#define PS_BYTECAP 512
 struct PacketStream typedef PacketStream;
 struct PacketStream {
   uint8_t *origin;
   uint8_t *data;
+  size_t cap;
   PacketStreamMode mode;
 };
 

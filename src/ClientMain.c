@@ -1,3 +1,4 @@
+#include "P2.h"
 #include "client/Internal.h"
 #include "client/P2.c"
 #include "client/Printf.c"
@@ -6,8 +7,28 @@
 #include "common/LogEntry.c"
 #include "common/Common.c"
 
+void P2InitWrapper() {
+  switch (P2_Init()) {
+    case P2_INIT_OK:
+      printf("P2 Init OK.\n");
+      break;
+    case P2_INIT_INITFAIL:
+      printf("P2 Init fail: Subsystem init fail.\n");
+      exit(1);
+      break;
+    case P2_INIT_CONNECTFAIL:
+      printf("P2 Init fail: Failed to connect to Monitor.\n");
+      exit(1);
+      break;
+    case P2_INIT_WASINITFAIL:
+      printf("P2 Init fail: Already initialized.\n");
+      exit(1);
+      break;
+  }
+}
+
 int main() {
-  P2_Init();
+  P2InitWrapper();
 
 #if 1
   P2_Print("Oh and also, the logs preserve across runs.");
@@ -27,10 +48,16 @@ int main() {
 #endif
 
   for (int i = 0; i < 100; ++i) {
+    if (P2_GetStatus() == P2_INACTIVE) {
+      printf("Monitor disconnected. Reconnecting...\n");
+      P2InitWrapper();
+    }
+
     P2_Print("Player \"%.*s\" (%c) (%f, %F)", 5, "Joe", 'x', (double)i, (double)i);
     ThreadSleep(1);
   }
 
+  ThreadSleep(10);
   P2_Deinit();
   return 0;
 }
