@@ -4,6 +4,12 @@ Printf2 is an off-host debugging monitor. It has the potential to visualize
 more than your regular console. As of version v1.1, It can't do anything
 besides basic text.
 
+## Example usage.
+
+You can see an example usage of this library in `examples/pong/` directory.
+
+[Pong Example Video](./examples/pong/video.mp4)
+
 ## How to use
 
 You need to link with `libprintf2.a` (Linux) or `printf2.lib` (Windows). 
