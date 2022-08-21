@@ -8,7 +8,7 @@ besides basic text.
 
 You can see an example usage of this library in `examples/pong/` directory.
 
-[Pong Example Video](./examples/pong/video.mp4)
+[Pong Example Video](https://youtu.be/Z66Afcwq5nk)
 
 ## How to use
 
