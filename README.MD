@@ -44,8 +44,8 @@ You will see a "Hello 123" log appear.
 
 ## Additional API functions.
 
-For additional API functions don't hesitate to look into P2.h as it contains most of the documentation.
+For additional API functions don't hesitate to look into `P2.h` as it contains most of the documentation.
 
 | Name          | Description
 |---------------|--------------------------------
-| P2_GetStatus  | Returns current status of the connection as `P2_Status`, if P2_INACTIVE is returned, you may call `P2_Init` again.
+| P2_GetStatus  | Returns current status of the connection as `P2_Status`, if `P2_INACTIVE` is returned, you may call `P2_Init` again.
