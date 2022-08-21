@@ -8,7 +8,7 @@
 int main() {
   P2_Init();
 
-#if 0
+#if 1
   P2_Print("Oh and also, the logs preserve across runs.");
 #else
   for (int i = 0; i < 2; ++i) {
@@ -27,7 +27,7 @@ int main() {
 
   for (int i = 0; i < 100000; ++i) {
     P2_Print("Player \"%s\" (%c) (%d, %d)", "Joe", 'x', i, i);
-    sleep(1);
+    ThreadSleep(1);
   }
 
   P2_Deinit();

@@ -10,6 +10,7 @@
   #include <Windows.h>
 #else
   #include <pthread.h>
+  #include <unistd.h>
 #endif
 
 #include <P2.h>
@@ -48,9 +49,11 @@ int MutexDestroy(Mutex *mutex);
 int ThreadCreate(Thread *thread, void *(*func)(void*));
 int ThreadJoin(Thread *thread);
 
+int ThreadSleep(int seconds);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Printf.c
-int FormatItems(LogItem *items, size_t items_max, uint32_t *out_nwritten, const char *fmt, va_list va);
+int FormatItems(LogItem *items, size_t items_max, uint32_t *out_nwritten, const char *fmt, va_list *va);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Core.c

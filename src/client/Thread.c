@@ -48,6 +48,12 @@ int ThreadJoin(Thread *thread)
   return 0;
 }
 
+int ThreadSleep(int seconds) {
+  DWORD millis = (DWORD)(seconds * 1000);
+  Sleep(millis);
+  return 0;
+}
+
 #else // POSIX
 
 int MutexInit(Mutex *mutex)
@@ -80,5 +86,8 @@ int ThreadJoin(Thread *thread)
   return !pthread_join(thread->id, NULL);
 }
 
+int ThreadSleep(int seconds) {
+  return sleep(seconds);
+}
 
 #endif
