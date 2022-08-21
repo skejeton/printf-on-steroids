@@ -72,6 +72,19 @@ do
 done
 
 case `getarg 0` in
+  package)
+    target_build
+    mkdir -p package
+    mkdir -p package/GUI
+    cp bin/printf2_server package/GUI/Printf2Monitor
+    mkdir -p package/GUI/data
+    cp data/Roboto.ttf package/GUI/data
+    mkdir -p package/Library
+    cp bin/libprintf2.a package/Library
+    mkdir -p package/Library/include
+    mkdir -p package/Library/include/P2
+    cp inc/P2.h package/Library/include/P2
+  ;;
   test)
     target_test `getarg 1`
   ;;
