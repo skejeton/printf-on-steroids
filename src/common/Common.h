@@ -85,6 +85,7 @@ struct LogEntry {
   uint64_t line;
   char    *file;
   char    *data;
+  char    *pre_formatted_data;
   uint32_t items_len;
   LogItem *items;
 };

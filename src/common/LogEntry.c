@@ -4,6 +4,7 @@ static void ConvLogEntry(PacketStream *ps, LogEntry *e) {
   PS_WRITEVAL(ps, &e->line);
   PS_WRITESTR(ps, &e->file);
   PS_WRITESTR(ps, &e->data);
+  PS_WRITESTR(ps, &e->pre_formatted_data);
   PS_LIST(i, ps, &e->items, &e->items_len) {
     LogItemType type = *(LogItemType*)PS_WRITEVAL(ps, &e->items[i].type);
     PS_WRITEVAL(ps, &e->items[i].start);

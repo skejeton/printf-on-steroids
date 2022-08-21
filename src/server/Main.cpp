@@ -2,6 +2,7 @@
 #include <enet/enet.h>
 #include <signal.h>
 #include <string.h>
+#include <cstdlib>
 
 typedef size_t Handle;
 typedef Handle BiHandle; 
@@ -23,53 +24,18 @@ char *CopyTextMalloc(const char *text) {
   return data;
 }
 
-enum LogGroupKeyType {
-  LGKT_NIL,
-  LGTK_INT,
-  LGTK_STR
-};
-
-struct LogGroupKey {
-  LogGroupKeyType type;
-  union {
-    const char *string;
-    int integer;
-  };
-};
-
-static LogGroupKey KeyInt(int i) {
-  LogGroupKey key = {LGTK_INT};
-  key.integer = i;
-  return key;
-}
-
-static LogGroupKey KeyStr(const char *s) {
-  LogGroupKey key = {LGTK_STR};
-  key.string = s;
-  return key;
-}
-
-bool KeyEqual(LogGroupKey a, LogGroupKey b) {
-  if (a.type != b.type) {
-    return false;
-  }
-
-  switch (a.type) {
-    case LGKT_NIL:
-      LOG_INFO("KeyEqual for nil keys, something's wrong.");
-      return false;
-    case LGTK_INT:
-      return a.integer == b.integer;
-    case LGTK_STR:
-      return strcmp(a.string, b.string) == 0;
-  }
-  LOG_ERROR("Unreachable.");
-}
-
 struct LogGroup {
-  LogGroupKey key;
+  bool used;
+  const char *key;
+ 
+  // Handles 
   size_t handles_len;
   BiHandle *handles;
+};
+
+struct LogMeta {
+  // Previous/Next generation of the log.
+  Handle previous, next;
 };
 
 void AppendHandle(LogGroup *group, size_t handle) {
@@ -84,6 +50,7 @@ struct LogList {
   LogGroup root;
   LogGroup *groups;
   LogEntry *logs;
+  LogMeta *meta;
   size_t logs_len;
 
   static LogList Init();
@@ -94,9 +61,10 @@ struct LogList {
 
 Handle AllocateLogGroup(LogList *list) {
   for (int i = 0; i < LOGLIST_GROUPMAX; ++i) {
-    if (list->groups[i].key.type == LGKT_NIL) {
+    if (!list->groups[i].used) {
       // Zero it out, just in case.
       list->groups[i] = {};
+      list->groups[i].used = true;
       return i;
     }
   }
@@ -105,11 +73,11 @@ Handle AllocateLogGroup(LogList *list) {
   return HANDLE_INVALID;
 }
 
-static LogGroup *AcquireGroup(LogList *list, LogGroup *group, LogGroupKey key) {
+static LogGroup *AcquireGroup(LogList *list, LogGroup *group, const char *key) {
   for (size_t i = 0; i < group->handles_len; ++i) {
     // NOTE(skejeton): Here we are assuming all nodes have Left prefix.
     LogGroup *subgroup = &list->groups[group->handles[i]];
-    if (KeyEqual(key, subgroup->key)) {
+    if (strcmp(key, subgroup->key) == 0) {
       return subgroup;
     }
   }
@@ -120,7 +88,6 @@ static LogGroup *AcquireGroup(LogList *list, LogGroup *group, LogGroupKey key) {
   return &list->groups[handle];
 }
 
-
 LogList LogList::Init() {
   LogList l = {};
   l.groups = (LogGroup*)calloc(LOGLIST_GROUPMAX, sizeof(LogGroup));
@@ -128,18 +95,57 @@ LogList LogList::Init() {
   return l;
 }
 
+void PrintMetadataChain(LogList *list, Handle genesis) {
+  while (genesis != HANDLE_INVALID) {
+    printf("%zu->", genesis);
+    if (genesis == list->meta[genesis].next) {
+      printf("\n");
+      LOG_ERROR("Cyclic reference. %zu->%zu", genesis, list->meta[genesis].next);
+    }
+    genesis = list->meta[genesis].next;
+  }
+  printf("!\n");
+}
+
 void LogList::AppendLog(LogEntry entry) {
   if (this->logs_len % 32 == 0) {
     this->logs = (LogEntry*)realloc(this->logs, sizeof(LogEntry) * (this->logs_len + 32));
+    this->meta = (LogMeta*)realloc(this->meta, sizeof(LogMeta) * (this->logs_len + 32));
   }
 
-  this->logs[this->logs_len++] = entry;
+  LogGroup *group = AcquireGroup(this, &this->root, entry.file);
+
+  this->logs[this->logs_len] = entry;
+  this->meta[this->logs_len] = {HANDLE_INVALID, HANDLE_INVALID};
+
+  // Link logs with the same ID (file:line)
+  for (size_t i = 0; i < group->handles_len; ++i) {
+    // Check if the child is a leaf (LogEntry)
+    if (BH_RIGHT(group->handles[i])) {
+      Handle log_handle = BH_GET(group->handles[i]);
+      // Here we only have to check the line because we are getting the group already.
+      if (this->logs[log_handle].line == entry.line) {
+        // Find the latest log in the chain.
+        while (this->meta[log_handle].next != HANDLE_INVALID) {
+          log_handle = this->meta[log_handle].next;
+        }
+
+        if (this->logs_len == log_handle) {
+          LOG_ERROR("Attempted to create cyclic reference.");
+        }
+
+        // Link related logs together.
+        this->meta[this->logs_len].previous = log_handle;
+        this->meta[log_handle].next = this->logs_len;
+        break;
+      }
+    }
+  }
 
   // Populate groups
-  {
-    LogGroup *line = AcquireGroup(this, AcquireGroup(this, &this->root, KeyStr(entry.file)), KeyInt(entry.line));
-    AppendHandle(line, BH_SET(this->logs_len-1));
-  }
+  AppendHandle(group, BH_SET(this->logs_len));
+
+  this->logs_len++;
 }
 
 struct Server {
@@ -154,7 +160,7 @@ void LogList_ClearAssumingPS(LogList *list) {
   free(list->root.handles);
   list->root = {};
   for (size_t i = 0; i < LOGLIST_GROUPMAX; ++i) {
-    if (list->groups[i].key.type != LGKT_NIL) {
+    if (list->groups[i].used) {
       free(list->groups[i].handles);
     }
     list->groups[i] = {};
@@ -381,7 +387,14 @@ void HandleInit(void) {
 }
 
 bool PassLogEntryFilter(ImGuiTextFilter *filter, LogEntry *entry) {
-  return filter->PassFilter(entry->data) || filter->PassFilter(entry->file);
+  bool pass = filter->PassFilter(entry->pre_formatted_data) || filter->PassFilter(entry->file);
+  if (!pass) {
+    char line_str[64];
+    snprintf(line_str, 64, "%lu", entry->line);
+    pass = filter->PassFilter(line_str);
+  }
+
+  return pass;
 }
 
 /* DisplayLogEntryHypertext()
@@ -405,17 +418,17 @@ static void DisplayLogEntryHypertext(LogEntry *entry) {
     ImGui::SameLine();
     switch (item->type) {
       case LIT_INT:
-        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFFFAAAA);
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFEEA999);
           ImGui::Text("%d", item->int_);
         ImGui::PopStyleColor(1);
         break;
       case LIT_CHR:
-        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFAAAAFF);
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFF99A9EE);
           ImGui::Text("%c", item->chr_);
         ImGui::PopStyleColor(1);
         break;
       case LIT_STR:
-        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFAAFFFF);
+        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFA9EEEE);
           ImGui::Text("%s", item->str_);
         ImGui::PopStyleColor(1);
         break;
@@ -433,11 +446,11 @@ static void DisplayLogEntryHypertext(LogEntry *entry) {
 
 static void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
   ImGui::PushStyleColor(ImGuiCol_Text, 0x99FFFFFF);
-    if (show_file) {
-      ImGui::Text("%s:%zu", entry->file, entry->line);
-    } else {
-      ImGui::Text("%zu", entry->line);
-    }
+  if (show_file) {
+    ImGui::Text("%s:%zu", entry->file, entry->line);
+  } else {
+    ImGui::Text("%zu", entry->line);
+  }
   ImGui::PopStyleColor(1);
   ImGui::SameLine();
   ImGui::PushStyleColor(ImGuiCol_HeaderHovered, 0x22FFFFFF);
@@ -446,58 +459,46 @@ static void DisplayLogEntry(LogEntry *entry, int i, bool show_file) {
 } 
 
 void DisplayLogListRecursive(LogList *list, LogGroup *group, ImGuiTextFilter *filter, int depth) {
-  bool wrap_in_tree_node = group->key.type == LGTK_STR && group_by == 1;
+  bool should_have_tree = group_by == 1 && group->key != NULL;
 
-  if (wrap_in_tree_node)
-    if (!ImGui::TreeNode(group->key.string)) {
-      return;
-    }
+  if (should_have_tree && !ImGui::TreeNode(group->key)) {
+    return;
+  }
 
-  BiHandle last_log = 0;
+  for (size_t i = 0; i < group->handles_len; ++i) {
+    BiHandle handle = group->handles[i];
+    if (BH_RIGHT(handle)) {
+      LogEntry *log_entry = &list->logs[BH_GET(handle)];
+      LogMeta log_meta = list->meta[BH_GET(handle)];
 
-  // NOTE(Skejeton): This is necessary to display logs in chronological order if the monitor mode is disabled.
-  if (group->key.type == LGTK_STR && depth == 1 && is_monitor == false) {
-    if (group->handles_len > 0) {
-      if (BH_RIGHT(group->handles[0])) {
-        LOG_ERROR("The first handle of a string node is a leaf. Looks like the temporary hack isn't needed anymore or needs fixing.");
-      }
-      // NOTE(Skejeton): Group with the line number.
-      LogGroup *number_group = &list->groups[group->handles[0]];
-      if (number_group->handles_len == 0) {
-        LOG_ERROR("The number log has no items. Wack. Looks like the temporary hack isn't needed anymore or needs fixing.");
-      }
-
-      Handle log_handle = BH_GET(number_group->handles[0]);
-      
-      // owo what's this
-      for (Handle h = log_handle; h < list->logs_len && strcmp(list->logs[h].file, group->key.string) == 0; h++) {
-        DisplayLogEntry(&list->logs[h], h, false);
-      }
-    } 
-  } else {
-    for (size_t i = 0; i < group->handles_len; ++i) {
-      BiHandle handle = group->handles[i];
-      if (BH_RIGHT(handle)) {
-        last_log = handle;
-        if (PassLogEntryFilter(filter, &list->logs[BH_GET(handle)])) {
-          if (!is_monitor) {
-            DisplayLogEntry(&list->logs[BH_GET(handle)], i, false);
+      if (is_monitor) {
+        // We found the first log in the related log chain.
+        if (log_meta.previous == HANDLE_INVALID) {
+          Handle last_handle = handle;
+          // Scroll down for the last log in the chain.
+          while (log_meta.next != HANDLE_INVALID) {
+            if (PassLogEntryFilter(filter, &list->logs[log_meta.next])) {
+              last_handle = log_meta.next;
+            }
+            log_meta = list->meta[log_meta.next];
           }
+          log_entry = &list->logs[last_handle];
+        } else {
+          log_entry = NULL;
         }
-      } else {
-        DisplayLogListRecursive(list, &list->groups[BH_GET(handle)], filter, depth+1);
       }
+
+      if (log_entry) {
+        if (PassLogEntryFilter(filter, log_entry)) {
+          DisplayLogEntry(log_entry, i, !should_have_tree);
+        }
+      }
+    } else {
+      DisplayLogListRecursive(list, &list->groups[BH_GET(handle)], filter, depth+1);
     }
   }
 
-  if (is_monitor && BH_RIGHT(last_log)) {
-    assert(is_monitor);
-    if (PassLogEntryFilter(filter, &list->logs[BH_GET(last_log)])) {
-      DisplayLogEntry(&list->logs[BH_GET(last_log)], 0, false);
-    }
-  }
-
-  if (wrap_in_tree_node)
+  if (should_have_tree)
     ImGui::TreePop();
 }
 

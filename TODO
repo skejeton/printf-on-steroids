@@ -1,1 +1,0 @@
-Fix searching of logs with format parameters. Right now they are ignoring the value of the parameter because we are searching against the format string.
