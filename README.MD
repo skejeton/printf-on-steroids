@@ -23,14 +23,14 @@ int main() {
 }
 ```
 
-First in P2_Init it will try connecting to the server for 5 seconds.
+First in `P2_Init` it will try connecting to the server for 5 seconds.
 If it can't find a server, it will resume the program without logging anything.
 
 Launch Printf2 server, you should find it in GUI folder if you download the 
 GitHub package provided. (Or packaged with `make package`).
 
 A window should appear. Try launching the example code again.
-You will se a "Hello 123" log appear.
+You will see a "Hello 123" log appear.
 
 ## GUI Options
 
@@ -41,3 +41,11 @@ You will se a "Hello 123" log appear.
 | Group/File | Groups logs in files instead of flat choronological representation.
 | Group/None | Groups logs in chronological order, independent of the file.
 | Clear      | Clear the log screen.
+
+## Additional API functions.
+
+For additional API functions don't hesitate to look into P2.h as it contains most of the documentation.
+
+| Name          | Description
+|---------------|--------------------------------
+| P2_GetStatus  | Returns current status of the connection as `P2_Status`, if P2_INACTIVE is returned, you may call `P2_Init` again.
