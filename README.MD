@@ -13,7 +13,7 @@ You can see an example usage of this library in `examples/pong/` directory.
 ## How to use
 
 You need to link with `libprintf2.a` (Linux) or `printf2.lib` (Windows). 
-Add the P2.h header in any place convenient in your project.
+Add the `P2.h` header in any place convenient in your project.
 
 An example program:
 
