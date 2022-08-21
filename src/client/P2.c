@@ -16,12 +16,12 @@ void P2_Print_(int line, const char *filename, const char *fmt, ...) {
   FormatItems(entry.items, 64, &entry.items_len, fmt, &va);
   va_end(va);
 
-  LogEntryDump(&entry);
+  IFDEBUG(LogEntryDump(&entry));
   Core_OutputLog(entry);
 }
 
-void P2_Init() {
-  Core_Init();
+int P2_Init() {
+  return Core_Init();
 }
 
 void P2_Deinit() {

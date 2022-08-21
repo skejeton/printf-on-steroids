@@ -36,12 +36,18 @@ void * LogEntryEncode(LogEntry entry) {
   PacketStream ps = PS_BeginWrite();
   ConvLogEntry(&ps, &entry);
   void *origin = PS_FinalizeWrite(&ps);
+  
+
   LOG_INFO("Encoded package:");
+  IFDEBUG(DumpBinary(origin, PS_PacketSize(origin)));
+
+
   return origin;
 }
 
 LogEntry LogEntryDecode(void *origin) {
   LOG_INFO("Decoding package:");
+  IFDEBUG(DumpBinary(origin, PS_PacketSize(origin)));
 
   PacketStream ps = PS_BeginRead(origin);
   LogEntry result = {0};
@@ -120,7 +126,7 @@ void LogItemDump(LogItem item) {
   char data[4096];
   LogItemToString(data, 4096, &item);
 
-  LOG_INFO("%s %u:%u %s", LOG_ITEM_TYPE_NAMES[item.type], item.start, item.size, data);
+  LOG_INFO("%s %u.%u %u:%u %s", LOG_ITEM_TYPE_NAMES[item.type], item.width, item.precision, item.start, item.size, data);
 }
 
 void LogEntryDump(LogEntry *e) {

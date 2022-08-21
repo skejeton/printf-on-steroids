@@ -27,9 +27,7 @@ int main() {
 #endif
 
   for (int i = 0; i < 100; ++i) {
-    for (int i = 0; i < 50; ++i) {
-      P2_Print("Player \"%.*s\" (%c) (%f, %F)", 5, "Joe", 'x', (double)i, (double)i);
-    }
+    P2_Print("Player \"%.*s\" (%c) (%f, %F)", 5, "Joe", 'x', (double)i, (double)i);
     ThreadSleep(1);
   }
 

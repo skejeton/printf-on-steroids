@@ -60,7 +60,7 @@ int FormatItems(LogItem *items, size_t items_max, uint32_t *out_nwritten, const 
 
 #include "Internal.h"
 
-void Core_Init();
+int Core_Init();
 void Core_Deinit();
 void Core_OutputLog(LogEntry entry);
 

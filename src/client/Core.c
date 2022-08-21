@@ -1,4 +1,5 @@
 #include "Internal.h"
+#include "enet/enet.h"
 
 struct {
   ENetPeer *peer;
@@ -8,7 +9,7 @@ struct {
 }
 typedef Client;
 
-static Client StartClient() {
+static int StartClient(Client *client) {
   ENetAddress address = {0};
   address.host = ENET_HOST_ANY;
   address.port = DEFAULT_PORT;
@@ -16,12 +17,12 @@ static Client StartClient() {
 
   ENetHost *host = enet_host_create(NULL, 1, DEFAULT_CHAN_CAP, 0, 0);
   if (host == NULL) {
-    LOG_ERROR("Can not create host.");
+    return 1;
   }
 
   ENetPeer *peer = enet_host_connect(host, &address, 2, 0);
   if (peer == NULL) {
-    LOG_ERROR("Failed to create peer.");
+    return 1;
   }
 
   ENetEvent event;
@@ -30,23 +31,23 @@ static Client StartClient() {
   } else {
     enet_peer_reset(peer);
     enet_host_destroy(host);
-    LOG_ERROR("Failed to connect to server.");
+    return 1;
   }
 
-
-  return (Client){.peer = peer, .host = host};
+  *client = (Client){.peer = peer, .host = host};
+  return 0;
 }
 
 static void StopClient(Client *client) {
   LOG_INFO("Stopping client.");
-  enet_peer_disconnect_now(client->peer, 0);
-  enet_host_destroy(client->host);
+  enet_host_flush(client->host);
+  enet_peer_disconnect(client->peer, 0);
 }
 
 static Client GLOBAL_CLIENT;
 static Mutex MUTEX;
-_Atomic(int) CORE_THREAD_RUNNING = 1;
-Thread CORE_THREAD_ID;
+static _Atomic(int) CORE_THREAD_RUNNING = 0;
+static Thread CORE_THREAD_ID;
 
 // TODO: Reliably send packets by recieving acknowledgments.
 static void* CoreThread(void *param) {
@@ -89,7 +90,7 @@ static void* CoreThread(void *param) {
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
           LOG_INFO("Server disconnected.");
-          break;
+          goto end;
         case ENET_EVENT_TYPE_RECEIVE:
           LOG_INFO("Recieved data.");
           break;
@@ -102,16 +103,8 @@ static void* CoreThread(void *param) {
     LOG_INFO("Done servicing events.");
   }
 
-  // I need it to ensure all the logs will sync up.
-  // This might take some time but this is an ok estimate. 
-  // This is a hacky way of doing it, I should fix it. (FIXME)
-  ENetEvent event;
-  while (enet_host_service(GLOBAL_CLIENT.host, &event, 1000) > 0);
-
-  StopClient(&GLOBAL_CLIENT);
-
-  LOG_INFO("Deinitializing enet.");
-  enet_deinitialize();
+end:
+  Core_Deinit();
 
   return NULL;
 }
@@ -123,43 +116,65 @@ static void SignalHandler(int signal) {
   exit(0);
 }
 
-void Core_Init() {
+int Core_Init() {
+  if (CORE_THREAD_RUNNING) {
+    return 2;
+  }
   if (enet_initialize() != 0) {
-    LOG_ERROR("Failed to initialize enet.");
+    return 3;
   }
 
   LOG_INFO("Enet initialized.");
 
-  GLOBAL_CLIENT = StartClient();
+  if (StartClient(&GLOBAL_CLIENT)) {
+    return 1;
+  }
 
   MutexInit(&MUTEX);
   signal(SIGINT, SignalHandler);
   LOG_INFO("Creating thread.");
+  CORE_THREAD_RUNNING = 1;
   ThreadCreate(&CORE_THREAD_ID, CoreThread);
+  return 0;
 }
 
 void Core_Deinit()
 {
   LOG_INFO("Stopping.");
-  CORE_THREAD_RUNNING = 0;
-  ThreadJoin(&CORE_THREAD_ID);
-  LOG_INFO("Thread finished.");
+  if (CORE_THREAD_RUNNING) {
+    CORE_THREAD_RUNNING = 0;
+    ThreadJoin(&CORE_THREAD_ID);
+    LOG_INFO("Thread finished.");
+  }
   MutexDestroy(&MUTEX);
+
+  ENetEvent event;
+  StopClient(&GLOBAL_CLIENT);
+
+  // I need it to ensure all the logs will sync up.
+  // This might take some time but this is an ok estimate. 
+  // This is a hacky way of doing it, I should fix it. (FIXME)
+  while (enet_host_service(GLOBAL_CLIENT.host, &event, 500) > 0) {}
+
+  LOG_INFO("Deinitializing enet.");
+  enet_deinitialize();
 }
 
 void Core_OutputLog(LogEntry entry) {
-  MutexLock(&MUTEX);
-    const size_t LIMIT = (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len);
-    void *origin = LogEntryEncode(entry);
-    const size_t OSIZE = PS_PacketSize(origin);
-    if (OSIZE >= LIMIT) {
-      LOG_ERROR("Push data failed.");
-    }
-  
+  if (CORE_THREAD_RUNNING) {
+    MutexLock(&MUTEX);
+      const size_t LIMIT = (sizeof GLOBAL_CLIENT.data - GLOBAL_CLIENT.data_len);
+      void *origin = LogEntryEncode(entry);
+      const size_t OSIZE = PS_PacketSize(origin);
+      if (OSIZE >= LIMIT) {
+        LOG_ERROR("Push data failed. Size %zu is over limit %zu at length %zu", OSIZE, LIMIT, GLOBAL_CLIENT.data_len);
+      }
+    
 
-    memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, origin, OSIZE);
-    GLOBAL_CLIENT.data_len += OSIZE;
-    free(origin);
-  MutexUnlock(&MUTEX);
+      memcpy(GLOBAL_CLIENT.data+GLOBAL_CLIENT.data_len, origin, OSIZE);
+      GLOBAL_CLIENT.data_len += OSIZE;
+      free(origin);
+    MutexUnlock(&MUTEX);
+  }
 }
 

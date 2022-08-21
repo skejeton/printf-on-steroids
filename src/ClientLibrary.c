@@ -1,0 +1,7 @@
+#include "client/Internal.h"
+#include "client/P2.c"
+#include "client/Printf.c"
+#include "client/Thread.c"
+#include "client/Core.c"
+#include "common/LogEntry.c"
+#include "common/Common.c"

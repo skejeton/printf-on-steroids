@@ -150,8 +150,19 @@ void LogList::AppendLog(LogEntry entry) {
 
 struct Server {
   LogList logs;
+
+  size_t peers_len;
+  ENetPeer *peers[32];
   ENetHost *host;
 };
+
+void ConnectPeer(Server *serv, ENetPeer *peer) {
+  if (serv->peers_len >= 32) {
+    LOG_ERROR("Too many peers connected.");
+  }
+
+  serv->peers[serv->peers_len++] = peer;
+}
 
 /* LogList_ClearAssumingPS(log_list)
 // Clears log list assuming the data was allocated by PacketStream.
@@ -177,6 +188,7 @@ void HandleEvents(Server *server) {
     LOG_INFO("Got event!");
     switch (event.type) {
       case ENET_EVENT_TYPE_CONNECT:
+        ConnectPeer(server, event.peer);
         LOG_INFO("Client connected.");
         break;
       case ENET_EVENT_TYPE_DISCONNECT:
@@ -184,7 +196,7 @@ void HandleEvents(Server *server) {
         break;
       case ENET_EVENT_TYPE_RECEIVE: {
         LogEntry entry = LogEntryDecode(event.packet->data);
-        LogEntryDump(&entry);
+        IFDEBUG(LogEntryDump(&entry));
         server->logs.AppendLog(entry);
         LOG_INFO("New log.");
         enet_packet_destroy(event.packet);
@@ -217,7 +229,11 @@ Server HostServer(int port) {
 }
 
 void StopServer(Server *server) {
+  for (int i = 0; i < server->peers_len; ++i) {
+    enet_peer_disconnect(server->peers[i], 0);
+  }
   LOG_INFO("Destroying server.");
+  enet_host_flush(server->host);
   enet_host_destroy(server->host);
 }
 

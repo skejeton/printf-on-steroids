@@ -16,10 +16,12 @@ static int HandleIntegerParameter(const char **format, va_list *va) {
     }
   }
   *format = fmt;
+  LOG_INFO("Parsed integer parameter %d", result);
   return result;
 }
 
 static void HandleFormatArgument(LogItem *destination, const char **format, va_list *va) {
+  *destination = (LogItem){0};
   const char *fmt = *format;
   if (*fmt != '%') {
     LOG_ERROR("Format argument doesn't start with a percent sign.");
@@ -72,7 +74,7 @@ static void HandleFormatArgument(LogItem *destination, const char **format, va_l
     case 'p': VAENTRY1(LIT_PTR, uint, void *, uint64_t);
     case 'n': *va_arg(*va, signed int*) = 0; fmt++; break; // Write zero as a stub.
     case '%': destination->type = LIT_CHR; destination->int_ = '%'; fmt++; break;
-    default:  LOG_ERROR("Invalid format specified '%c'", *fmt);
+    default:  LOG_WARN("Invalid format specified '%c'", *fmt);
   }
 
   #undef VAENTRY1

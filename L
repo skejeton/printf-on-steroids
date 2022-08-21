@@ -2,11 +2,16 @@
 #-*- sh -*-
 
 # some constants #
+AR=ar
 CC=clang
 CXX=clang++
+LD=ld
+OBJCOPY=objcopy
 OUTPUT_NAME=bin/printf2
-LIBRARIES="-lc -lm bin/libenet.a -Wl,-rpath,\$ORIGIN"
-FLAGS="-fsanitize=address -g"
+OUTPUT_LIBRARY=bin/libprintf2.a
+LIBRARIES="-lc bin/libenet.a"
+# FLAGS="-fsanitize=address -g"
+FLAGS="-O3"
 INCLUDES="-Ilib/enet/include -Isrc -Ilib -Iinc"
 ##################
 
@@ -37,6 +42,11 @@ target_build() {
   target_build_depend
   $CXX src/ServerMain.cpp bin/libserver.a -lGL -lXcursor -lXi -lX11 $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_server
   $CC src/ClientMain.c -lpthread $FLAGS $LIBRARIES $INCLUDES -o bin/printf2_client
+  $CC src/ClientLibrary.c $FLAGS $INCLUDES -c
+  $LD -r *.o bin/libenet.a -o Out.o
+  $OBJCOPY --keep-global-symbols=GlobalSymbols.txt Out.o Out.o
+  $AR rcs bin/libprintf2.a Out.o
+  rm Out.o
 }
 
 target_run() {
