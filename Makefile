@@ -2,7 +2,6 @@ LIBRARIES=-lc bin/libenet.a
 FLAGS?=-O3
 INCLUDES=-Ilib/enet/include -Isrc -Ilib -Iinc
 
-
 ./bin/libenet.a:
 	mkdir -p bin
 	$(CC) $(FLAGS) -c lib/enet/*.c -Ilib/enet/include
