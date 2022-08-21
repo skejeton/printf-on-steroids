@@ -186,6 +186,7 @@ void HandleEvents(Server *server) {
         LogEntry entry = LogEntryDecode(event.packet->data);
         LogEntryDump(&entry);
         server->logs.AppendLog(entry);
+        LOG_INFO("New log.");
         enet_packet_destroy(event.packet);
       } break;
       case ENET_EVENT_TYPE_NONE:
@@ -416,26 +417,37 @@ static void DisplayLogEntryHypertext(LogEntry *entry) {
     // Disable SameLine call on first element so they are interleaved within.
     ImGui::Text("%.*s", (int)(item->start-string_offset), entry->data+string_offset);
     ImGui::SameLine();
+    ImU32 color = 0xFFFFFFFF;
+
     switch (item->type) {
-      case LIT_INT:
-        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFEEA999);
-          ImGui::Text("%d", item->int_);
-        ImGui::PopStyleColor(1);
-        break;
-      case LIT_CHR:
-        ImGui::PushStyleColor(ImGuiCol_Text, 0xFF99A9EE);
-          ImGui::Text("%c", item->chr_);
-        ImGui::PopStyleColor(1);
-        break;
-      case LIT_STR:
-        ImGui::PushStyleColor(ImGuiCol_Text, 0xFFA9EEEE);
-          ImGui::Text("%s", item->str_);
-        ImGui::PopStyleColor(1);
-        break;
+      case LIT_UINT:
+      case LIT_UOCT:
+      case LIT_HEX:
+      case LIT_UPCHEX:
+      case LIT_FLT:
+      case LIT_UPCFLT:
+      case LIT_SCIFLT:
+      case LIT_SCIUPCFLT:
+      case LIT_SHRFLT:
+      case LIT_SHRUPCFLT:
+      case LIT_HEXFLT:
+      case LIT_UPCHEXFLT:
+      case LIT_INT: color = 0xFFEEA999; break;
+      case LIT_CHR: color = 0xFF99A9EE; break;
+      case LIT_PTR:
+      case LIT_STR: color = 0xFFA9EEEE; break;
       case LIT_NIL:
         LOG_INFO("Rendering LIT_NIL. WTF?");
         break;
     }
+
+    char buffer[4096];
+    LogItemToString(buffer, 4096, item);
+    ImGui::PushStyleColor(ImGuiCol_Text, color);
+      ImGui::Text("%s", buffer);
+    ImGui::PopStyleColor();
+
+
     ImGui::SameLine();
     string_offset = item->start + item->size;
   }

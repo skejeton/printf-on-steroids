@@ -9,13 +9,19 @@ static void ConvLogEntry(PacketStream *ps, LogEntry *e) {
     LogItemType type = *(LogItemType*)PS_WRITEVAL(ps, &e->items[i].type);
     PS_WRITEVAL(ps, &e->items[i].start);
     PS_WRITEVAL(ps, &e->items[i].size);
+    PS_WRITEVAL(ps, &e->items[i].flags);
+    PS_WRITEVAL(ps, &e->items[i].precision);
+    PS_WRITEVAL(ps, &e->items[i].width);
 
     switch (type) {
-      case LIT_INT:
+      case LIT_INT: case LIT_CHR: 
         PS_WRITEVAL(ps, &e->items[i].int_);
         break;
-      case LIT_CHR:
-        PS_WRITEVAL(ps, &e->items[i].chr_);
+      case LIT_UINT: case LIT_UOCT: case LIT_HEX: case LIT_UPCHEX: case LIT_PTR:
+        PS_WRITEVAL(ps, &e->items[i].uint_);
+        break;
+      case LIT_FLT: case LIT_UPCFLT: case LIT_SCIFLT: case LIT_SCIUPCFLT: case LIT_SHRFLT: case LIT_SHRUPCFLT: case LIT_HEXFLT: case LIT_UPCHEXFLT:
+        PS_WRITEVAL(ps, &e->items[i].flt_);
         break;
       case LIT_STR:
         PS_WRITESTR(ps, &e->items[i].str_);
@@ -52,21 +58,69 @@ void LogEntryDeinit(LogEntry *entry) {
   ConvLogEntry(&ps, entry);
 }
 
-void LogItemDump(LogItem item) {
-  switch (item.type) {
-    case LIT_CHR:
-      LOG_INFO("CHR %u:%u %c", item.start, item.size, item.chr_);
-      break;
-    case LIT_STR:
-      LOG_INFO("STR %u:%u %s", item.start, item.size, item.str_);
-      break;    
-    case LIT_INT:
-      LOG_INFO("INT %u:%u %d", item.start, item.size, item.int_);
-      break;     
-    case LIT_NIL:
-      LOG_INFO("NIL %u:%u", item.start, item.size);
-      break;     
+/*
+// The difference between GENPRINT1 and GENPRINT2 is that GENPRINT1 ignores precision parameter.
+// This is because for some specifiers lie %c using precision parameter is UB.
+*/
+#define GENPRINT1(cas, suffix, val)\
+  case cas:\
+  if (item->width == 0)\
+    snprintf(dest, max, "%" suffix, val);\
+  else\
+    snprintf(dest, max, "%*" suffix, item->width, val);\
+  break
+
+#define GENPRINT2(cas, suffix, val)\
+  case cas:\
+  if (item->precision == 0) {\
+    if (item->width == 0)\
+      snprintf(dest, max, "%" suffix, val);\
+    else\
+      snprintf(dest, max, "%*" suffix, item->width, val);\
+  } else {\
+    if (item->width == 0)\
+      snprintf(dest, max, "%.*" suffix, item->precision, val);\
+    else\
+      snprintf(dest, max, "%*.*" suffix, item->width, item->precision, val);\
+  }\
+  break
+
+void LogItemToString(char *dest, size_t max, LogItem *item) {
+  switch (item->type) {
+    GENPRINT2(LIT_INT,       "ld",  item->int_);
+    GENPRINT2(LIT_UINT,      "lu",  item->int_);
+    GENPRINT2(LIT_UOCT,      "lo",  item->uint_);
+    GENPRINT2(LIT_HEX,       "lx",  item->uint_);
+    GENPRINT2(LIT_UPCHEX,    "luX", item->uint_);
+    GENPRINT2(LIT_FLT,       "f",   item->flt_);
+    GENPRINT2(LIT_UPCFLT,    "F",   item->flt_);
+    GENPRINT2(LIT_SCIFLT,    "e",   item->flt_);
+    GENPRINT2(LIT_SCIUPCFLT, "E",   item->flt_);
+    GENPRINT2(LIT_SHRFLT,    "g",   item->flt_);
+    GENPRINT2(LIT_SHRUPCFLT, "G",   item->flt_);
+    GENPRINT2(LIT_HEXFLT,    "a",   item->flt_);
+    GENPRINT2(LIT_UPCHEXFLT, "A",   item->flt_);
+    GENPRINT1(LIT_CHR,       "lc",  (unsigned int)item->uint_);
+    GENPRINT2(LIT_STR,       "s",   item->str_);
+    GENPRINT1(LIT_PTR,       "p",   (void*)item->uint_);
+    case      LIT_NIL: *dest = 0; break;
   }
+}
+
+static const char *LOG_ITEM_TYPE_NAMES[] = {
+  "NIL", "INT", "UINT", "UOCT", "HEX", "UPCHEX",
+  "FLT", "UPCFLT", "SCIFLT", "SCIUPCFLT", "SHRFLT",
+  "SHRUPCFLT", "HEXFLT", "UPCHEXFLT", "CHR", "STR", "PTR"
+};
+
+#undef GENPRINT1
+#undef GENPRINT2
+
+void LogItemDump(LogItem item) {
+  char data[4096];
+  LogItemToString(data, 4096, &item);
+
+  LOG_INFO("%s %u:%u %s", LOG_ITEM_TYPE_NAMES[item.type], item.start, item.size, data);
 }
 
 void LogEntryDump(LogEntry *e) {
